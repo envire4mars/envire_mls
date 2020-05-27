@@ -40,7 +40,8 @@
 #include <mars/interfaces/sim/LoadCenter.h>
 #include <mars/interfaces/sim/NodeManagerInterface.h>
 #include <base/samples/RigidBodyState.hpp>
-#include <mars/sim/defines.hpp>
+#include <mars/plugins/envire_managers/EnvireDefs.hpp>
+#include <mars/plugins/envire_managers/envire_managers/EnvireStorageManager.hpp>
 #include <mars/sim/SimMotor.h>
 
 #include <base/TransformWithCovariance.hpp>
@@ -105,15 +106,16 @@ namespace mars {
         LOG_DEBUG( "[EnvireMls::init] SIM_CENTER_FRAME_NAME is defined: " + SIM_CENTER_FRAME_NAME); 
 #endif
         envire::core::FrameId center = SIM_CENTER_FRAME_NAME; 
-        if (! control->graph->containsFrame(center))
+        std::shared_ptr<envire::core::EnvireGraph> graph = EnvireStorageManager::instance()->getGraph();
+        if (! graph->containsFrame(center))
         {
-          control->graph->addFrame(center);
+          graph->addFrame(center);
         }
         // Create the default frame for the MLS but leave it empty.
         // The mls is loaded in the first update.
         mlsFrameId = MLS_FRAME_NAME; 
         centerFrameId = SIM_CENTER_FRAME_NAME;
-        control->graph->addFrame(mlsFrameId);
+        graph->addFrame(mlsFrameId);
         envire::core::Transform mlsTf(base::Time::now());
         mlsTf.transform.translation << double(MLS_FRAME_TF_X), double(MLS_FRAME_TF_Y), double(MLS_FRAME_TF_Z);
         mlsTf.transform.orientation = base::AngleAxisd(double(MLS_FRAME_TF_ROT_X), base::Vector3d::UnitX());
@@ -127,7 +129,7 @@ namespace mars {
             double(MLS_FRAME_TF_Y), 
             double(MLS_FRAME_TF_Z));
 #endif
-        control->graph->addTransform(SIM_CENTER_FRAME_NAME, MLS_FRAME_NAME, mlsTf);
+        graph->addTransform(SIM_CENTER_FRAME_NAME, MLS_FRAME_NAME, mlsTf);
         sceneLoaded = false;
         moved = false;
         movingForward = false;
