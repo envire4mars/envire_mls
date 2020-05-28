@@ -41,10 +41,12 @@
 #include <mars/interfaces/sim/NodeManagerInterface.h>
 #include <base/samples/RigidBodyState.hpp>
 #include <mars/plugins/envire_managers/EnvireDefs.hpp>
-#include <mars/plugins/envire_managers/envire_managers/EnvireStorageManager.hpp>
+#include <mars/plugins/envire_managers/EnvireStorageManager.hpp>
 #include <mars/sim/SimMotor.h>
 
 #include <base/TransformWithCovariance.hpp>
+
+#include <pcl/io/ply_io.h>
 
 //#define TEST_MLS_PATH std::string("/simulation/mars/plugins/envire_mls/testMlsData/crater_simulation_mls.graph")
 //#define TEST_MLS_PATH std::string("/simulation/mars/plugins/envire_mls/testMlsData/mls_map-cave-20171109.graph")
@@ -64,6 +66,25 @@
 #define ROBOT_TEST_Z_ROT  mars::utils::Vector(0,0,-90.0)
 
 #define DEBUG 0
+
+
+// TODO: should be set over config
+#define MLS_FRAME_NAME std::string("mls_01")
+// TODO: should be set over config
+#define ROBOT_NAME std::string("Asguard_v4")
+// TODO: should be set over config
+#define ROBOT_ROOT_LINK_NAME std::string("body")
+// TODO: do we need this?
+#define ASGUARD_PATH std::string("/models/robots/asguard_v4/smurf/asguard_v4.smurf")
+// This is the name of the mls frame in the serialized graph that can be loaded
+// by mars
+#define DUMPED_MLS_FRAME_NAME std::string("mls_map")
+//#define DEBUG_WORLD_PHYSICS 1 // Comment in to have logs from the physics simulator controller
+#define DRAW_MLS_CONTACTS 1 // Comment in to have logs from the physics simulator controller
+
+#define ENV_AUTOPROJ_ROOT "AUTOPROJ_CURRENT_ROOT"
+
+
 
 
 const std::vector<std::string> MOTOR_NAMES{"wheel_front_left_motor", "wheel_front_right_motor", "wheel_rear_left_motor", "wheel_rear_right_motor"};
@@ -86,6 +107,8 @@ namespace mars {
       using namespace envire::core;
       using namespace maps::grid;
 
+      using namespace mars::plugins;
+
 
       EnvireMls::EnvireMls(lib_manager::LibManager *theManager)
         : MarsPluginTemplate(theManager, "EnvireMls") 
@@ -103,10 +126,10 @@ namespace mars {
         LOG_DEBUG( "[EnvireMls::init] SIM_CENTER_FRAME_NAME is not defined "); 
 #endif
 #ifdef SIM_CENTER_FRAME_NAME
-        LOG_DEBUG( "[EnvireMls::init] SIM_CENTER_FRAME_NAME is defined: " + SIM_CENTER_FRAME_NAME); 
+        LOG_DEBUG( "[EnvireMls::init] SIM_CENTER_FRAME_NAME is defined: %s", SIM_CENTER_FRAME_NAME.c_str()); 
 #endif
         envire::core::FrameId center = SIM_CENTER_FRAME_NAME; 
-        std::shared_ptr<envire::core::EnvireGraph> graph = EnvireStorageManager::instance()->getGraph();
+        std::shared_ptr<envire::core::EnvireGraph> graph = envire_managers::EnvireStorageManager::instance()->getGraph();
         if (! graph->containsFrame(center))
         {
           graph->addFrame(center);
@@ -141,6 +164,8 @@ namespace mars {
 
       void EnvireMls::update(sReal time_ms) 
       {
+        LOG_ERROR("[EnvireMls::Update] Implementation pending");
+        /*
         if (not sceneLoaded){
           //testAddMLS();
           testAddMLSAndRobot();
@@ -149,6 +174,7 @@ namespace mars {
         }
         else{
             if (not moved){
+
                 // Let's test the move robot method
                 base::samples::RigidBodyState robotPose;
                 robotPose.position << ROBOT_TEST_POS.x(), ROBOT_TEST_POS.y(), ROBOT_TEST_POS.z();
@@ -166,6 +192,7 @@ namespace mars {
                 moveForwards();    
             }
         }
+        */
       }
 
       void EnvireMls::loadMLSMap(const std::string & mlsPath)
@@ -180,7 +207,8 @@ namespace mars {
         FrameId dumpedFrameId(DUMPED_MLS_FRAME_NAME);
         mlsPrec mlsAux = getMLSMap(auxMlsGraph, dumpedFrameId);
         Item<mlsPrec>::Ptr mlsItemPtr(new Item<mlsPrec>(mlsAux));
-        control->graph->addItemToFrame(mlsFrameId, mlsItemPtr);
+        std::shared_ptr<envire::core::EnvireGraph> graph = envire_managers::EnvireStorageManager::instance()->getGraph();
+        graph->addItemToFrame(mlsFrameId, mlsItemPtr);
       }
 
       mlsPrec EnvireMls::getMLSMap(const envire::core::EnvireGraph & graph, envire::core::FrameId frameId)
@@ -203,8 +231,9 @@ namespace mars {
          * centre centerFrame.
          */
 
-        mlsPrec mls = getMLSMap(*(control->graph), mlsFrameId);
-        Transform mlsTransform = control->graph->getTransform(centerFrameId, mlsFrameId);
+        std::shared_ptr<envire::core::EnvireGraph> graph = envire_managers::EnvireStorageManager::instance()->getGraph();
+        mlsPrec mls = getMLSMap(*(graph), mlsFrameId);
+        Transform mlsTransform = graph->getTransform(centerFrameId, mlsFrameId);
 #ifdef DEBUG
         LOG_DEBUG("[EnvireMls::addMLS] Tf x y z %f, %f, %f", 
             mlsTransform.transform.translation.x(), 
@@ -215,8 +244,9 @@ namespace mars {
         NodeData* node(new NodeData);
         //NodeData* node(new NodeData);
         node->init(MLS_FRAME_NAME, pos);
-        node->physicMode = interfaces::NODE_TYPE_MLS;
-        //node->env_path = mlsPath;
+        
+        LOG_DEBUG("EnvireMls: Missing definition of NODE_TYPE_MLS");
+        //node->physicMode = interfaces::NODE_TYPE_MLS;
 
 	boost::shared_ptr<maps::grid::MLSMapPrecalculated> mlsPtr(& mls);
         // Store MLS geometry in simulation nodeA
@@ -239,6 +269,8 @@ namespace mars {
         dRSetIdentity( R );
         //dRFromAxisAndAngle( R, 1, 0, 0, (3.141592/180) * 90 );  //DEGTORAD
 
+        LOG_DEBUG("EnvireMls SetUp node position is not implemented yet");
+        /*
         // Place it.
         dGeomSetRotation( (dGeomID)node->g_mls, R );
 #ifdef DEBUG
@@ -261,7 +293,7 @@ namespace mars {
         dGeomSetData((dGeomID)node->g_mls, gd);
 
         node->movable = false;	
-
+        */
         return node;
       }
 
@@ -275,14 +307,15 @@ namespace mars {
         NodeData* nodePtr = setUpNodeData();
         envire::core::Item<NodeData>::Ptr itemPtr(new envire::core::Item<NodeData>(*nodePtr));
         envire::core::FrameId mlsFrameId = MLS_FRAME_NAME;
-        control->graph->addItemToFrame(mlsFrameId, itemPtr);        
+        std::shared_ptr<envire::core::EnvireGraph> graph = envire_managers::EnvireStorageManager::instance()->getGraph();
+        graph->addItemToFrame(mlsFrameId, itemPtr);        
       }
 
       void EnvireMls::testAddMLS()
       {
 #ifdef DEBUG
         std::string path = std::getenv(ENV_AUTOPROJ_ROOT) + TEST_MLS_PATH;
-        LOG_DEBUG( "[EnvireMls::addMLS] Mls to test with: " + path); 
+        LOG_DEBUG( "[EnvireMls::addMLS] Mls to test with: %s", path.c_str()); 
 #endif
         loadMLSMap(TEST_MLS_PATH);
         // Next is to instantiate a load the correspondent nodeData
@@ -297,7 +330,7 @@ namespace mars {
       {
 #ifdef DEBUG
         std::string path = std::getenv(ENV_AUTOPROJ_ROOT) + TEST_MLS_PATH;
-        LOG_DEBUG( "[EnvireMls::testAddMLSAndRobot] Mls to test with: " + path); 
+        LOG_DEBUG( "[EnvireMls::testAddMLSAndRobot] Mls to test with: %s", path.c_str()); 
 #endif
         if (LOAD_PLY)
         {
@@ -313,7 +346,8 @@ namespace mars {
 #ifdef DEBUG
         LOG_DEBUG( "[EnvireMls::testAddMLSAndRobot] 2"); 
 #endif
-        control->sim->loadScene(std::getenv(ENV_AUTOPROJ_ROOT) + ASGUARD_PATH, ROBOT_NAME, ROBOT_TEST_POS, ROBOT_TEST_Z_ROT);
+        LOG_ERROR( "[EnvireMls::testAddMLSAndRobot] Missing LoadScene method not included yet"); 
+        //control->sim->loadScene(std::getenv(ENV_AUTOPROJ_ROOT) + ASGUARD_PATH, ROBOT_NAME, ROBOT_TEST_POS, ROBOT_TEST_Z_ROT);
 
       }
 
@@ -323,11 +357,11 @@ namespace mars {
           for(auto it: MOTOR_NAMES) {
             motor = control->motors->getSimMotorByName(it);
 #ifdef DEBUG
-            LOG_DEBUG( "[EnvireMls::moveForwards] Motor " + it +" received"); 
+            LOG_DEBUG( "[EnvireMls::moveForwards] Motor %s received", it.c_str()); 
 #endif
             motor->setVelocity(SPEED);
 #ifdef DEBUG
-            LOG_DEBUG( "[EnvireMls::moveForwards] Motor " + it +" set velocity sent"); 
+            LOG_DEBUG( "[EnvireMls::moveForwards] Motor %s set velocity sent", it.c_str()); 
 #endif 
           }
           movingForward = true;
@@ -353,7 +387,8 @@ namespace mars {
           tf.setCovariance(base::TransformWithCovariance::Covariance::Identity()*0.001);
           mlsS.mergePointCloud(cloud, tf);
           Item<mlsPrec>::Ptr mlsItemPtr(new Item<mlsPrec>(mlsS));
-          control->graph->addItemToFrame(mlsFrameId, mlsItemPtr);
+          std::shared_ptr<envire::core::EnvireGraph> graph = envire_managers::EnvireStorageManager::instance()->getGraph();
+          graph->addItemToFrame(mlsFrameId, mlsItemPtr);
 #ifdef DEBUG
           LOG_DEBUG( "[EnvireMls::loadSlopedFromPLY] MLS loaded to graph"); 
 #endif  
