@@ -48,9 +48,6 @@
 
 #include <pcl/io/ply_io.h>
 
-//#define TEST_MLS_PATH std::string("/simulation/mars/plugins/envire_mls/testMlsData/crater_simulation_mls.graph")
-//#define TEST_MLS_PATH std::string("/simulation/mars/plugins/envire_mls/testMlsData/mls_map-cave-20171109.graph")
-#define TEST_MLS_PATH std::string("/simulation/mars/plugins/envire_mls/testMlsData/mls_map-cave-20171110.graph")
 #define MLS_FRAME_TF_X 0.0
 #define MLS_FRAME_TF_Y 0.0
 #define MLS_FRAME_TF_Z 0.0
@@ -70,32 +67,11 @@
 
 // TODO: should be set over config
 #define MLS_FRAME_NAME std::string("mls_01")
-// TODO: should be set over config
-#define ROBOT_NAME std::string("Asguard_v4")
-// TODO: should be set over config
-#define ROBOT_ROOT_LINK_NAME std::string("body")
-// TODO: do we need this?
-#define ASGUARD_PATH std::string("/models/robots/asguard_v4/smurf/asguard_v4.smurf")
-// This is the name of the mls frame in the serialized graph that can be loaded
-// by mars
-#define DUMPED_MLS_FRAME_NAME std::string("mls_map")
+
 //#define DEBUG_WORLD_PHYSICS 1 // Comment in to have logs from the physics simulator controller
 #define DRAW_MLS_CONTACTS 1 // Comment in to have logs from the physics simulator controller
 
 #define ENV_AUTOPROJ_ROOT "AUTOPROJ_CURRENT_ROOT"
-
-
-
-
-const std::vector<std::string> MOTOR_NAMES{"wheel_front_left_motor", "wheel_front_right_motor", "wheel_rear_left_motor", "wheel_rear_right_motor"};
-
-const bool MOVE_FORWARD=true;
-const double SPEED=0.5;
-
-const bool LOAD_PLY=true;
-
-const std::string PLY_FILE = "/simulation/mars/plugins/envire_mls/testPLYData/pointcloud-20171110-2230.ply";
-
 
 namespace mars {
   namespace plugins {
@@ -114,31 +90,27 @@ namespace mars {
         : MarsPluginTemplate(theManager, "EnvireMls") 
       {
         mlsCollision = envire::collision::MLSCollision::getInstance();
-        //theLoader = theManager->getLibraryAs<EnvireSmurfLoader::EnvireSmurfLoader>("envire_smurf_loader");
       }
 
       void EnvireMls::init() 
       {
-#ifdef DEBUG
-        LOG_DEBUG( "[EnvireMls::init] Tests"); 
-#endif
 #ifndef SIM_CENTER_FRAME_NAME
-        LOG_DEBUG( "[EnvireMls::init] SIM_CENTER_FRAME_NAME is not defined "); 
+        LOG_ERROR( "[EnvireMls::init] SIM_CENTER_FRAME_NAME is not defined "); 
 #endif
 #ifdef SIM_CENTER_FRAME_NAME
         LOG_DEBUG( "[EnvireMls::init] SIM_CENTER_FRAME_NAME is defined: %s", SIM_CENTER_FRAME_NAME.c_str()); 
 #endif
         envire::core::FrameId center = SIM_CENTER_FRAME_NAME; 
-        std::shared_ptr<envire::core::EnvireGraph> graph = envire_managers::EnvireStorageManager::instance()->getGraph();
-        if (! graph->containsFrame(center))
+        simGraph = envire_managers::EnvireStorageManager::instance()->getGraph();
+        if (! simGraph->containsFrame(center))
         {
-          graph->addFrame(center);
+          simGraph->addFrame(center);
         }
         // Create the default frame for the MLS but leave it empty.
         // The mls is loaded in the first update.
         mlsFrameId = MLS_FRAME_NAME; 
         centerFrameId = SIM_CENTER_FRAME_NAME;
-        graph->addFrame(mlsFrameId);
+        simGraph->addFrame(mlsFrameId);
         envire::core::Transform mlsTf(base::Time::now());
         mlsTf.transform.translation << double(MLS_FRAME_TF_X), double(MLS_FRAME_TF_Y), double(MLS_FRAME_TF_Z);
         mlsTf.transform.orientation = base::AngleAxisd(double(MLS_FRAME_TF_ROT_X), base::Vector3d::UnitX());
@@ -152,10 +124,8 @@ namespace mars {
             double(MLS_FRAME_TF_Y), 
             double(MLS_FRAME_TF_Z));
 #endif
-        graph->addTransform(SIM_CENTER_FRAME_NAME, MLS_FRAME_NAME, mlsTf);
-        sceneLoaded = false;
-        moved = false;
-        movingForward = false;
+        simGraph->addTransform(SIM_CENTER_FRAME_NAME, MLS_FRAME_NAME, mlsTf);
+
       }
 
       void EnvireMls::reset() { }
@@ -195,7 +165,21 @@ namespace mars {
         */
       }
 
-      void EnvireMls::loadMLSMap(const std::string & mlsPath)
+      mlsPrec EnvireMls::getMLSFromFrame(const envire::core::EnvireGraph & graph, envire::core::FrameId frameId)
+      {
+        /*
+        Extract from the graph the mls stored in frameId. It is assumed that
+        the mls is stored in Kalman format and has to be converted to precalculated.
+        */
+        EnvireGraph::ItemIterator<Item<mlsKal>> beginItem, endItem;
+        boost::tie(beginItem, endItem) = graph.getItems<Item<mlsKal>>(frameId);
+        mlsKal mlsKal;
+        mlsPrec mls;
+        mls = beginItem->getData(); // Here the conversion to Precalculated occurs (mlsPerc <-> mlsKal)
+        return mls;
+      }
+
+      void EnvireMls::loadMLSMap(const std::string & mlsPath, const std::string & mls_frame_name)
       {
         /* Loads in the envire graph the mls given in the path after
          * deserializing it.
@@ -204,23 +188,12 @@ namespace mars {
          */
         EnvireGraph auxMlsGraph;
         auxMlsGraph.loadFromFile(mlsPath);
-        FrameId dumpedFrameId(DUMPED_MLS_FRAME_NAME);
-        mlsPrec mlsAux = getMLSMap(auxMlsGraph, dumpedFrameId);
+        FrameId dumpedFrameId(mls_frame_name);
+        mlsPrec mlsAux = getMLSFromFrame(auxMlsGraph, dumpedFrameId);
         Item<mlsPrec>::Ptr mlsItemPtr(new Item<mlsPrec>(mlsAux));
-        std::shared_ptr<envire::core::EnvireGraph> graph = envire_managers::EnvireStorageManager::instance()->getGraph();
-        graph->addItemToFrame(mlsFrameId, mlsItemPtr);
+        simGraph->addItemToFrame(mlsFrameId, mlsItemPtr);
       }
 
-      mlsPrec EnvireMls::getMLSMap(const envire::core::EnvireGraph & graph, envire::core::FrameId frameId)
-      {
-        // The serialized Mls is not in Precalculated but in Kalman, so we have to convert it
-        EnvireGraph::ItemIterator<Item<mlsKal>> beginItem, endItem;
-        boost::tie(beginItem, endItem) = graph.getItems<Item<mlsKal>>(frameId);
-        mlsKal mlsKal;
-        mlsPrec mls;
-        mls = beginItem->getData(); // Here the conversion to Precalculated occurs (mlsPerc <-> mlsKal)
-        return mls;
-      }
 
       NodeData* EnvireMls::setUpNodeData()
       {
@@ -231,9 +204,8 @@ namespace mars {
          * centre centerFrame.
          */
 
-        std::shared_ptr<envire::core::EnvireGraph> graph = envire_managers::EnvireStorageManager::instance()->getGraph();
-        mlsPrec mls = getMLSMap(*(graph), mlsFrameId);
-        Transform mlsTransform = graph->getTransform(centerFrameId, mlsFrameId);
+        mlsPrec mls = getMLSFromFrame(*(simGraph), mlsFrameId);
+        Transform mlsTransform = simGraph->getTransform(centerFrameId, mlsFrameId);
 #ifdef DEBUG
         LOG_DEBUG("[EnvireMls::addMLS] Tf x y z %f, %f, %f", 
             mlsTransform.transform.translation.x(), 
@@ -307,91 +279,7 @@ namespace mars {
         NodeData* nodePtr = setUpNodeData();
         envire::core::Item<NodeData>::Ptr itemPtr(new envire::core::Item<NodeData>(*nodePtr));
         envire::core::FrameId mlsFrameId = MLS_FRAME_NAME;
-        std::shared_ptr<envire::core::EnvireGraph> graph = envire_managers::EnvireStorageManager::instance()->getGraph();
-        graph->addItemToFrame(mlsFrameId, itemPtr);        
-      }
-
-      void EnvireMls::testAddMLS()
-      {
-#ifdef DEBUG
-        std::string path = std::getenv(ENV_AUTOPROJ_ROOT) + TEST_MLS_PATH;
-        LOG_DEBUG( "[EnvireMls::addMLS] Mls to test with: %s", path.c_str()); 
-#endif
-        loadMLSMap(TEST_MLS_PATH);
-        // Next is to instantiate a load the correspondent nodeData
-        //addMLSNode();
-        
-#ifdef DEBUG
-        LOG_DEBUG( "[EnvireMls::addMLS] 2"); 
-#endif
-      }
-
-      void EnvireMls::testAddMLSAndRobot()
-      {
-#ifdef DEBUG
-        std::string path = std::getenv(ENV_AUTOPROJ_ROOT) + TEST_MLS_PATH;
-        LOG_DEBUG( "[EnvireMls::testAddMLSAndRobot] Mls to test with: %s", path.c_str()); 
-#endif
-        if (LOAD_PLY)
-        {
-            loadSlopedFromPLY();
-        }
-        else
-        {
-            loadMLSMap(std::getenv(ENV_AUTOPROJ_ROOT) + TEST_MLS_PATH);
-        }
-        // Next is to instantiate a load the correspondent nodeData
-        //addMLSNode();
-        
-#ifdef DEBUG
-        LOG_DEBUG( "[EnvireMls::testAddMLSAndRobot] 2"); 
-#endif
-        LOG_ERROR( "[EnvireMls::testAddMLSAndRobot] Missing LoadScene method not included yet"); 
-        //control->sim->loadScene(std::getenv(ENV_AUTOPROJ_ROOT) + ASGUARD_PATH, ROBOT_NAME, ROBOT_TEST_POS, ROBOT_TEST_Z_ROT);
-
-      }
-
-      void EnvireMls::moveForwards()
-      {
-          mars::sim::SimMotor* motor;
-          for(auto it: MOTOR_NAMES) {
-            motor = control->motors->getSimMotorByName(it);
-#ifdef DEBUG
-            LOG_DEBUG( "[EnvireMls::moveForwards] Motor %s received", it.c_str()); 
-#endif
-            motor->setVelocity(SPEED);
-#ifdef DEBUG
-            LOG_DEBUG( "[EnvireMls::moveForwards] Motor %s set velocity sent", it.c_str()); 
-#endif 
-          }
-          movingForward = true;
-      }
-
-      void EnvireMls::loadSlopedFromPLY()
-      {
-#ifdef DEBUG
-          LOG_DEBUG( "[EnvireMls::loadSlopedFromPLY] Start"); 
-#endif
-          pcl::PLYReader reader;
-          pcl::PointCloud<pcl::PointXYZ> cloud;
-          reader.read(std::getenv(ENV_AUTOPROJ_ROOT) + PLY_FILE, cloud);
-#ifdef DEBUG
-          LOG_DEBUG( "[EnvireMls::loadSlopedFromPLY] Cloud has been generated"); 
-#endif  
-          Vector2ui num_cells {2500, 2500};
-          const Vector2d resolution {0.3, 0.3};
-          const MLSConfig config; // Thickness, gapsize
-          mlsSloped mlsS(num_cells, resolution, config);
-          mlsS.getLocalFrame().translation() << 0.5*mlsS.getSize(), 0;
-          base::TransformWithCovariance tf = base::TransformWithCovariance::Identity();
-          tf.setCovariance(base::TransformWithCovariance::Covariance::Identity()*0.001);
-          mlsS.mergePointCloud(cloud, tf);
-          Item<mlsPrec>::Ptr mlsItemPtr(new Item<mlsPrec>(mlsS));
-          std::shared_ptr<envire::core::EnvireGraph> graph = envire_managers::EnvireStorageManager::instance()->getGraph();
-          graph->addItemToFrame(mlsFrameId, mlsItemPtr);
-#ifdef DEBUG
-          LOG_DEBUG( "[EnvireMls::loadSlopedFromPLY] MLS loaded to graph"); 
-#endif  
+        simGraph->addItemToFrame(mlsFrameId, itemPtr);        
       }
 
     } // end of namespace envire_mls

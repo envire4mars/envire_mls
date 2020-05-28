@@ -75,29 +75,26 @@ namespace mars {
         void update(mars::interfaces::sReal time_ms);
 
         // EnvireMls methods
-        void loadMLSMap(const std::string & mlsPath);
+        void loadMLSMap(const std::string & mlsPath, const std::string & mls_frame_name);
         void addMLSNode();
-        void testAddMLS();
-        void testAddMLSAndRobot();
 
       private:
 
         //void deserializeMLS(const std::string & mlsPath);
         mars::interfaces::NodeData* setUpNodeData();
-        mlsPrec getMLSMap(const envire::core::EnvireGraph & graph, envire::core::FrameId mlsFrameId);
+        mlsPrec getMLSFromFrame(const envire::core::EnvireGraph & graph, envire::core::FrameId mlsFrameId);
         void moveForwards();
         void loadSlopedFromPLY();
 
         // Private members
- 	maps::grid::MLSMapPrecalculated mlsPrecalculated;
- 	envire::collision::MLSCollision* mlsCollision;
-	boost::shared_ptr<maps::grid::MLSMapPrecalculated> mlsPtr;   	
+        maps::grid::MLSMapPrecalculated mlsPrecalculated;
+        envire::collision::MLSCollision *mlsCollision;
+        boost::shared_ptr<maps::grid::MLSMapPrecalculated> mlsPtr;
 
-        bool sceneLoaded;
-        bool moved;
+        std::shared_ptr<envire::core::EnvireGraph> simGraph;
+
         envire::core::FrameId mlsFrameId;
         envire::core::FrameId centerFrameId;
-        bool movingForward;
 
         //EnvireSmurfLoader::EnvireSmurfLoader* theLoader;
 
