@@ -71,8 +71,6 @@
 //#define DEBUG_WORLD_PHYSICS 1 // Comment in to have logs from the physics simulator controller
 #define DRAW_MLS_CONTACTS 1 // Comment in to have logs from the physics simulator controller
 
-#define ENV_AUTOPROJ_ROOT "AUTOPROJ_CURRENT_ROOT"
-
 namespace mars {
   namespace plugins {
     namespace envire_mls {

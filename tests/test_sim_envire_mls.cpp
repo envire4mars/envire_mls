@@ -1,3 +1,5 @@
+#include<mars/plugins/envire_mls/EnvireMls.hpp>
+#include <mars/plugins/envire_managers/EnvireDefs.hpp>
 
 // TODO: should be set over config
 #define ROBOT_NAME std::string("Asguard_v4")
@@ -30,12 +32,12 @@ const std::string PLY_FILE = "/simulation/mars/plugins/envire_mls/testPLYData/po
     void testAddMLS();
     void testAddMLSAndRobot();
 */
-
+/*
 namespace mars {
   namespace plugins {
-    namespace envire_mls {
+    namespace envire_mls_test {
 
-      void EnvireMls::testAddMLS()
+      void addMLS()
       {
 #ifdef DEBUG
         std::string path = std::getenv(ENV_AUTOPROJ_ROOT) + TEST_MLS_PATH;
@@ -50,7 +52,7 @@ namespace mars {
 #endif
       }
 
-      void EnvireMls::testAddMLSAndRobot()
+      void EnvireMlsTest::addMLSAndRobot()
       {
 #ifdef DEBUG
         std::string path = std::getenv(ENV_AUTOPROJ_ROOT) + TEST_MLS_PATH;
@@ -75,7 +77,7 @@ namespace mars {
 
       }
 
-      void EnvireMls::moveForwards()
+      void EnvireMlsTest::moveForwards()
       {
           mars::sim::SimMotor* motor;
           for(auto it: MOTOR_NAMES) {
@@ -91,7 +93,7 @@ namespace mars {
           movingForward = true;
       }
 
-      void EnvireMls::loadSlopedFromPLY()
+      void EnvireMlsTest::loadSlopedFromPLY()
       {
 #ifdef DEBUG
           LOG_DEBUG( "[EnvireMls::loadSlopedFromPLY] Start"); 
@@ -120,3 +122,4 @@ namespace mars {
     }
   }
 }
+*/
