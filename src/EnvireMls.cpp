@@ -92,6 +92,7 @@ namespace mars {
 
       void EnvireMls::init() 
       {
+        LOG_DEBUG("Envire_mls plugin is initializing");
 #ifndef SIM_CENTER_FRAME_NAME
         LOG_ERROR( "[EnvireMls::init] SIM_CENTER_FRAME_NAME is not defined "); 
 #endif
