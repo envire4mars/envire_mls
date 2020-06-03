@@ -134,34 +134,7 @@ namespace mars {
       void EnvireMls::update(sReal time_ms) 
       {
         LOG_ERROR("[EnvireMls::Update] Implementation pending");
-        /*
-        if (not sceneLoaded){
-          //testAddMLS();
-          testAddMLSAndRobot();
 
-          sceneLoaded = true;
-        }
-        else{
-            if (not moved){
-
-                // Let's test the move robot method
-                base::samples::RigidBodyState robotPose;
-                robotPose.position << ROBOT_TEST_POS.x(), ROBOT_TEST_POS.y(), ROBOT_TEST_POS.z();
-                robotPose.orientation = Eigen::AngleAxisd(ROBOT_TEST_Z_ROT.z(), Eigen::Vector3d::UnitZ());
-                envire::core::Transform robotTf(robotPose.position, robotPose.orientation);
-                //envire::core::Transform robotTf = robotPose.getTransform();
-                LOG_DEBUG("[EnvireMls::update] Robot Target Pose: %g, %g, %g", robotTf.transform.translation.x(), robotTf.transform.translation.y(), robotTf.transform.translation.z());
-                envire::core::FrameId robotRootFrame = ROBOT_ROOT_LINK_NAME;
-                control->nodes->setTfToCenter(robotRootFrame, robotTf);
-                //control->nodes->setTfToCenter(robotRootFrame, robotPose.getTransform());
-                LOG_DEBUG("[EnvireMls::update] Robot moved");
-                moved = true;
-            }
-            if ((MOVE_FORWARD) && (!movingForward)){
-                moveForwards();    
-            }
-        }
-        */
       }
 
       mlsPrec EnvireMls::getMLSFromFrame(const envire::core::EnvireGraph & graph, envire::core::FrameId frameId)
