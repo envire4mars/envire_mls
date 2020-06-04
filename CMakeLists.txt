@@ -60,3 +60,5 @@ find_package(Rock)
 set(ROCK_USE_CXX11 TRUE)
 rock_init(envire_mls 0.1)
 rock_standard_layout()
+
+add_subdirectory(tests)
