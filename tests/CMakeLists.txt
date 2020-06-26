@@ -1,6 +1,6 @@
-project(envire_mls)
+project(envire_mls_tests)
 set(PROJECT_VERSION 1.0)
-set(PROJECT_DESCRIPTION "Provides MLS environment representation load and storage in the Envire Mars graph")
+set(PROJECT_DESCRIPTION "Tests")
 cmake_minimum_required(VERSION 2.6)
 include(FindPkgConfig)
 
@@ -12,19 +12,33 @@ find_package(PCL 1.8 REQUIRED COMPONENTS common)
 set(PCL_LIBS pcl_common-${PCL_VERSION_MAJOR}.${PCL_VERSION_MINOR} pcl_io-${PCL_VERSION_MAJOR}.${PCL_VERSION_MINOR})
 
 pkg_check_modules(PKGCONFIG REQUIRED
-                  lib_manager
-                  envire_core
-                  mars_sim
-                  #envire_collider_mls
-                  envire_smurf_loader
-                  ${PCL_LIBS}
-                  base-types
+			    lib_manager
+			    data_broker
+			    mars_interfaces
+				base-lib
+                ${PCL_LIBS}
+                envire_collider_mls
+				envire_mls
 )
 include_directories(${PKGCONFIG_INCLUDE_DIRS})
 link_directories(${PKGCONFIG_LIBRARY_DIRS})
 add_definitions(${PKGCONFIG_CFLAGS_OTHER})  #flags excluding the ones with -I
 
-add_subdirectory(src)
+include_directories(
+	src
+)
+
+set(SOURCES 
+	src/EnvireMlsTests.cpp
+)
+
+set(HEADERS
+	src/EnvireMlsTests.hpp
+	src/defs.hpp
+)
+
+
+
 add_library(${PROJECT_NAME} SHARED ${SOURCES})
 
 target_link_libraries(${PROJECT_NAME}
@@ -56,9 +70,5 @@ install(FILES ${HEADERS} DESTINATION include/mars/plugins/${PROJECT_NAME})
 configure_file(${PROJECT_NAME}.pc.in ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.pc @ONLY)
 install(FILES ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.pc DESTINATION lib/pkgconfig)
 
-find_package(Rock)
-set(ROCK_USE_CXX11 TRUE)
-rock_init(envire_mls 0.1)
-rock_standard_layout()
+add_definitions(-DBASE_LOG_NAMESPACE=${PROJECT_NAME})
 
-add_subdirectory(tests)
