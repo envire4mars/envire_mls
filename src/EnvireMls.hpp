@@ -38,7 +38,7 @@
 #include <envire_core/graph/EnvireGraph.hpp>
 #include <envire_core/items/Item.hpp>
 
-#include <envire_collider_mls/MLSCollision.hpp>
+//#include <envire_collider_mls/MLSCollision.hpp>
 
 #include <maps/grid/MLSMap.hpp>
 
@@ -88,7 +88,7 @@ namespace mars {
 
         // Private members
         maps::grid::MLSMapPrecalculated mlsPrecalculated;
-        envire::collision::MLSCollision *mlsCollision;
+        //envire::collision::MLSCollision *mlsCollision; // We might not need this 
         boost::shared_ptr<maps::grid::MLSMapPrecalculated> mlsPtr;
 
         std::shared_ptr<envire::core::EnvireGraph> simGraph;

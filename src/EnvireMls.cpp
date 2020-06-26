@@ -87,7 +87,8 @@ namespace mars {
       EnvireMls::EnvireMls(lib_manager::LibManager *theManager)
         : MarsPluginTemplate(theManager, "EnvireMls") 
       {
-        mlsCollision = envire::collision::MLSCollision::getInstance();
+        // I think we are not using this library at all anymore
+        //mlsCollision = envire::collision::MLSCollision::getInstance();
       }
 
       void EnvireMls::init() 

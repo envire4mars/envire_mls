@@ -57,7 +57,7 @@ namespace mars {
         LOG_DEBUG("Initialization routine of the Envire MLS Tests simulation plugin");
         // Get the envire mls plugin and load through it the map
         mlsPlugin = libManager->acquireLibraryAs<envire_mls::EnvireMls>("envire_mls");
-        LOG_DEBUG("%s library acquiered", mlsPlugin -> getLibName().c_str());
+        LOG_DEBUG("%s library acquired", mlsPlugin -> getLibName().c_str());
       }
 
       void EnvireMlsTests::reset() {

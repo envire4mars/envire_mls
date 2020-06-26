@@ -15,7 +15,7 @@ pkg_check_modules(PKGCONFIG REQUIRED
                   lib_manager
                   envire_core
                   mars_sim
-                  envire_collider_mls
+                  #envire_collider_mls
                   envire_smurf_loader
                   ${PCL_LIBS}
                   base-types
