@@ -13,6 +13,7 @@ set(PCL_LIBS pcl_common-${PCL_VERSION_MAJOR}.${PCL_VERSION_MINOR} pcl_io-${PCL_V
 
 pkg_check_modules(PKGCONFIG REQUIRED
 			    lib_manager
+				yaml-cpp
 			    data_broker
 			    mars_interfaces
 				base-lib
@@ -35,6 +36,7 @@ set(SOURCES
 set(HEADERS
 	src/EnvireMlsTests.hpp
 	src/defs.hpp
+	src/constants.hpp
 )
 
 

@@ -53,7 +53,10 @@ namespace mars {
       using mlsPrec = maps::grid::MLSMapPrecalculated;
       using mlsKal = maps::grid::MLSMapKalman;
       using mlsSloped = maps::grid::MLSMapSloped;
-      //using mlsType = maps::grid::MLSMap<maps::grid::MLSConfig::KALMAN>;
+      using mlsType = maps::grid::MLSMapPrecalculated;
+      using CollisionType = smurf::Collidable;
+      using CollisionItem = envire::core::Item<CollisionType>;
+      using IterCollItem = envire::core::EnvireGraph::ItemIterator<CollisionItem>;
 
       // inherit from MarsPluginTemplateGUI for extending the gui
       class EnvireMls: public mars::interfaces::MarsPluginTemplate {
@@ -73,10 +76,14 @@ namespace mars {
         void init();
         void reset();
         void update(mars::interfaces::sReal time_ms);
+        void preStepChecks(void);
 
         // EnvireMls methods
         void loadMLSMap(const std::string & mlsPath, const std::string & mls_frame_name);
         void addMLSNode();
+        void getAllColFrames(void);
+
+
 
       private:
 
@@ -91,10 +98,16 @@ namespace mars {
         //envire::collision::MLSCollision *mlsCollision; // We might not need this 
         boost::shared_ptr<maps::grid::MLSMapPrecalculated> mlsPtr;
 
-        std::shared_ptr<envire::core::EnvireGraph> simGraph;
+        // std::shared_ptr<envire::core::EnvireGraph> simGraph; // Getting some segfaults, maybe due to having this as attribute instead of getting it each time?
 
         envire::core::FrameId mlsFrameId;
         envire::core::FrameId centerFrameId;
+
+        std::vector<envire::core::FrameId> colFrames;
+
+        bool mlsLoaded;
+        mlsType mls;
+
 
         //EnvireSmurfLoader::EnvireSmurfLoader* theLoader;
 

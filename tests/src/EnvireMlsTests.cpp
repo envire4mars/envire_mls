@@ -33,10 +33,12 @@
 
 #include <base-logging/Logging.hpp>
 
-#include "defs.hpp"
 
-const std::vector<std::string> MOTOR_NAMES{"wheel_front_left_motor", "wheel_front_right_motor", "wheel_rear_left_motor", "wheel_rear_right_motor"};
-const double SPEED=0.5;
+
+#include <envire_mls/defs.hpp>
+#include "defs.hpp"
+#include "constants.hpp"
+
 
 namespace mars {
   namespace plugins {
@@ -48,13 +50,31 @@ namespace mars {
 
       EnvireMlsTests::EnvireMlsTests(lib_manager::LibManager *theManager)
         : MarsPluginTemplate(theManager, "EnvireMlsTests") {
-          mlsLoaded = false;
-          robotLoaded = false;
-          robotMoving = false;
+
+        mlsLoaded = false;
+        robotLoaded = false;
+        robotMoving = false;
+
+        //Needed? mlsCollision = envire::collision::MLSCollision::getInstance();
+        robPos = {0.0, 0.0, 0.0};
+        robOri = 0.0;
+        mlsPos = {0.0, 0.0, 0.0};
+        mlsOri = 0.0;
+        mapStringParams["robPos"] = robPosP;
+        mapStringParams["robOri"] = robOriP;
+        mapStringParams["mlsPos"] = mlsPosP;
+        mapStringParams["mlsOri"] = mlsOriP;
+        mapStringParams["robGoal"] = robGoalP;
+        confLoaded = false;
+        mlsFrameId = MLS_FRAME_NAME;
       }
   
       void EnvireMlsTests::init() {
         LOG_DEBUG("Initialization routine of the Envire MLS Tests simulation plugin");
+        if (! loadGeneralConf(generalConfPath))
+        {
+          LOG_ERROR("Problem loading the main conf %s", generalConfPath.c_str());
+        }
         // Get the envire mls plugin and load through it the map
         mlsPlugin = libManager->acquireLibraryAs<envire_mls::EnvireMls>("envire_mls");
         LOG_DEBUG("%s library acquired", mlsPlugin -> getLibName().c_str());
@@ -103,6 +123,16 @@ namespace mars {
         }
       }
 
+      void EnvireMlsTests::loadMlsMap()
+      {
+        if (generalConf["mode"] == loadMlsGraphTag)
+        {
+            std::string testMlsPath = testMlsDataPath + generalConf["envire_graph_path"];
+            Vector mlsRot(0,0,mlsOri);
+            control->sim->loadScene(testMlsPath, MLS_NAME, mlsPos, mlsRot);
+        }
+      }
+
       void EnvireMlsTests::loadRobot(){
         LOG_DEBUG("Loading robot")
         //control->sim->loadScene(std::getenv(ENV_AUTOPROJ_ROOT) + ASGUARD_PATH, ROBOT_NAME, ROBOT_TEST_POS, ROBOT_TEST_Z_ROT);
@@ -139,6 +169,35 @@ namespace mars {
           robotMoving = true;
       }
 
+      bool EnvireMlsTests::yamlLoad(const std::string & confPath, YAML::Node & conf)
+      {
+        bool loaded = false;
+        try{
+          conf = YAML::LoadFile(confPath);
+          loaded = true;
+        }catch (...){
+          LOG_ERROR("[EnvireMlsTests::init] Something went wrong loading the test config yaml."
+          " It might have not been found. : %s", confPath.c_str());
+        }
+        return loaded;
+      }
+
+
+      bool EnvireMlsTests::loadGeneralConf(const std::string & confPath)
+      {
+        bool loaded = false;
+        YAML::Node conf;
+        if(yamlLoad(confPath, conf))
+        {
+          for (YAML::const_iterator it=conf.begin(); it!=conf.end();++it)
+          {
+            generalConf[it->first.as<std::string>()] = it->second.as<std::string>();
+            LOG_DEBUG("[EnvireMlsTests::loadGeneralConf] %s : %s", it->first.as<std::string>().c_str(),  generalConf[it->first.as<std::string>()].c_str());
+          }
+          loaded = true;
+        }
+        return loaded;
+      }
 
     } // end of namespace envire_mls_tests
   } // end of namespace plugins

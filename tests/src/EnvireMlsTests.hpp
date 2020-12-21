@@ -41,6 +41,7 @@
 #include <mars/cfg_manager/CFGManagerInterface.h>
 
 #include <string>
+#include <yaml-cpp/yaml.h>
 
 #include <mars/plugins/envire_mls/EnvireMls.hpp>
 
@@ -83,15 +84,38 @@ namespace mars {
         //void menuAction(int action, bool checked = false);
 
         // EnvireMlsTests methods
+        void loadMlsMap(); // Loads the mls for the test
         void loadRobot(); //Loads the robot for the test
         void cmdFwdDrive(); //Commands the robot to move forward
 
       private:
+        bool yamlLoad(const std::string & confPath, YAML::Node & conf);
+        bool loadGeneralConf(const std::string & confPath);
+
         cfg_manager::cfgPropertyStruct example;
         mars::plugins::envire_mls::EnvireMls * mlsPlugin;
         bool mlsLoaded;
         bool robotLoaded;
         bool robotMoving;
+
+        envire::core::FrameId mlsFrameId;
+        envire::core::FrameId centerFrameId;
+
+        enum ConfParams { mlsPosP, 
+                          mlsOriP,
+                          robPosP, 
+                          robOriP, 
+                          robGoalP }; 
+
+        std::map<std::string, ConfParams> mapStringParams;
+        mars::utils::Vector robPos;
+        double robOri;
+        mars::utils::Vector mlsPos;
+        double mlsOri;
+        mars::utils::Vector robGoalPos;
+
+        bool confLoaded;
+        std::map<std::string, std::string> generalConf; //TODO: rename to conf
 
       }; // end of class definition EnvireMlsTests
 

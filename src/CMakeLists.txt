@@ -5,5 +5,6 @@ set(SOURCES
 
 set(HEADERS
     src/EnvireMls.hpp
+    src/defs.hpp
     PARENT_SCOPE
 )

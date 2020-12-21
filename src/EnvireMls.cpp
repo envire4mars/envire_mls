@@ -48,28 +48,7 @@
 
 #include <pcl/io/ply_io.h>
 
-#define MLS_FRAME_TF_X 0.0
-#define MLS_FRAME_TF_Y 0.0
-#define MLS_FRAME_TF_Z 0.0
-#define MLS_FRAME_TF_ROT_X 0.0 
-
-#define GD_SENSE_CONTACT_FORCE 0
-#define GD_PARENT_GEOM 0
-#define GD_C_PARAMS_CFM 0.001
-#define GD_C_PARAMS_ERP 0.001
-#define GD_C_PARAMS_BOUNCE 0.0
-
-#define ROBOT_TEST_POS  mars::utils::Vector(-3.5,-1,0)
-#define ROBOT_TEST_Z_ROT  mars::utils::Vector(0,0,-90.0)
-
-#define DEBUG 0
-
-
-// TODO: should be set over config
-#define MLS_FRAME_NAME std::string("mls_01")
-
-//#define DEBUG_WORLD_PHYSICS 1 // Comment in to have logs from the physics simulator controller
-#define DRAW_MLS_CONTACTS 1 // Comment in to have logs from the physics simulator controller
+#include "defs.hpp"
 
 namespace mars {
   namespace plugins {
@@ -101,7 +80,7 @@ namespace mars {
         LOG_DEBUG( "[EnvireMls::init] SIM_CENTER_FRAME_NAME is defined: %s", SIM_CENTER_FRAME_NAME.c_str()); 
 #endif
         envire::core::FrameId center = SIM_CENTER_FRAME_NAME; 
-        simGraph = envire_managers::EnvireStorageManager::instance()->getGraph();
+        std::shared_ptr<envire::core::EnvireGraph> simGraph = envire_managers::EnvireStorageManager::instance()->getGraph();
         if (! simGraph->containsFrame(center))
         {
           simGraph->addFrame(center);
@@ -159,6 +138,7 @@ namespace mars {
          *
          * The serialized object is graph containing the mls in DUMPED_MLS_FRAME
          */
+        std::shared_ptr<envire::core::EnvireGraph> simGraph = envire_managers::EnvireStorageManager::instance()->getGraph();
         EnvireGraph auxMlsGraph;
         auxMlsGraph.loadFromFile(mlsPath);
         FrameId dumpedFrameId(mls_frame_name);
@@ -177,6 +157,7 @@ namespace mars {
          * centre centerFrame.
          */
 
+        std::shared_ptr<envire::core::EnvireGraph> simGraph = envire_managers::EnvireStorageManager::instance()->getGraph();
         mlsPrec mls = getMLSFromFrame(*(simGraph), mlsFrameId);
         Transform mlsTransform = simGraph->getTransform(centerFrameId, mlsFrameId);
 #ifdef DEBUG
@@ -242,6 +223,35 @@ namespace mars {
         return node;
       }
 
+      void EnvireMls::preStepChecks(void)
+      { 
+        // Check that we have the collision frames 
+        // TODO The collision frames
+        // should be updated if more collidables are included
+        if(colFrames.empty()){
+          getAllColFrames();
+        }
+
+        std::shared_ptr<envire::core::EnvireGraph> simGraph = envire_managers::EnvireStorageManager::instance()->getGraph();
+        if(simGraph->containsFrame(MLS_FRAME_NAME) && (!mlsLoaded))
+        {
+          envire::core::EnvireGraph::ItemIterator<envire::core::Item<mlsType>> beginItem, endItem;
+          boost::tie(beginItem, endItem) = simGraph->getItems<envire::core::Item<mlsType>>(mlsFrameId);
+          if (beginItem != endItem)
+          {
+            LOG_DEBUG("[EnvireMls::preStepChecks]: An mls was found in the simulation graph");
+            mls = beginItem->getData();
+            mlsLoaded = true;
+            LOG_DEBUG("[EnvireMls::preStepChecks]: Mls map was fetched from the graph");
+          }
+          else
+          {
+#ifdef DEBUG_WORLD_PHYSICS
+            //std::cout << "[WorldPhysics::stepTheWorldChecks]: Mls map was not found yet in the graph "<< std::endl;  
+#endif    
+          }
+        }
+      }
 
       void EnvireMls::addMLSNode()
       {
@@ -250,10 +260,39 @@ namespace mars {
         // stored does not exists, create it by now we assume that the frame to
         // add to is the default one for the mls, created in the init step
         NodeData* nodePtr = setUpNodeData();
+        std::shared_ptr<envire::core::EnvireGraph> simGraph = envire_managers::EnvireStorageManager::instance()->getGraph();
         envire::core::Item<NodeData>::Ptr itemPtr(new envire::core::Item<NodeData>(*nodePtr));
         envire::core::FrameId mlsFrameId = MLS_FRAME_NAME;
         simGraph->addItemToFrame(mlsFrameId, itemPtr);        
+      }    
+
+      /** 
+      *
+      * \brief Auxiliar methof of computeMLSCollisions. 
+      * Returns all frames that contain collidable objects 
+      *
+      */
+      void EnvireMls::getAllColFrames(void)
+      {
+        // Find out the frames which contain a collidable put them in a vector
+        envire::core::EnvireGraph::vertex_iterator  it, end;
+        std::shared_ptr<envire::core::EnvireGraph> simGraph = envire_managers::EnvireStorageManager::instance()->getGraph();
+
+        std::tie(it, end) = simGraph->getVertices(); // This is triggering a segfault if you set simGraph as an attribute of this module instead of accessing it on each method from the other module
+        for(; it != end; ++it)
+        {
+            // See if the vertex has collision objects
+            IterCollItem itCols, endCols;
+            std::tie(itCols, endCols) = simGraph->getItems<CollisionItem>(*it);
+            if(itCols != endCols)
+            {
+                envire::core::FrameId colFrame = simGraph->getFrameId(*it);
+                colFrames.push_back(colFrame);
+                LOG_DEBUG("[EnvireMLS::getAllColFrames] Collision items found in frame %s", colFrame.c_str());
+            }
+        }
       }
+
 
     } // end of namespace envire_mls
   } // end of namespace plugins
