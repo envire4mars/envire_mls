@@ -1,5 +1,5 @@
 // TODO: should be set over config
-#define MLS_FRAME_NAME std::string("mls_01")
+
 #define MLS_FRAME_TF_X 0.0
 #define MLS_FRAME_TF_Y 0.0
 #define MLS_FRAME_TF_Z 0.0

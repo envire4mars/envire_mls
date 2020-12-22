@@ -84,16 +84,19 @@ namespace mars {
         //void menuAction(int action, bool checked = false);
 
         // EnvireMlsTests methods
-        void loadMlsMap(); // Loads the mls for the test
-        void loadRobot(); //Loads the robot for the test
-        void cmdFwdDrive(); //Commands the robot to move forward
+        bool loadMlsMap(); // Loads the mls for the test
+        bool loadRobot(); //Loads the robot for the test
+        bool loadScene(); //Loads the scene for the test
 
       private:
         bool yamlLoad(const std::string & confPath, YAML::Node & conf);
+        bool loadSceneConf(const std::string & confPath);
         bool loadGeneralConf(const std::string & confPath);
+        
+        void moveForward();
+        bool goalReached();
 
         cfg_manager::cfgPropertyStruct example;
-        mars::plugins::envire_mls::EnvireMls * mlsPlugin;
         bool mlsLoaded;
         bool robotLoaded;
         bool robotMoving;
@@ -116,6 +119,8 @@ namespace mars {
 
         bool confLoaded;
         std::map<std::string, std::string> generalConf; //TODO: rename to conf
+
+        bool sceneLoaded;
 
       }; // end of class definition EnvireMlsTests
 

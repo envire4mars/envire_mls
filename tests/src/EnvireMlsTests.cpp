@@ -30,6 +30,9 @@
 #include "EnvireMlsTests.hpp"
 #include <mars/data_broker/DataBrokerInterface.h>
 #include <mars/data_broker/DataPackage.h>
+#include <mars/plugins/envire_managers/EnvireDefs.hpp>
+#include <mars/plugins/envire_managers/EnvireStorageManager.hpp>
+#include <mars/sim/SimMotor.h>
 
 #include <base-logging/Logging.hpp>
 
@@ -67,17 +70,43 @@ namespace mars {
         mapStringParams["robGoal"] = robGoalP;
         confLoaded = false;
         mlsFrameId = MLS_FRAME_NAME;
+        sceneLoaded = false;
+        robotMoving = false;
       }
   
       void EnvireMlsTests::init() {
-        LOG_DEBUG("Initialization routine of the Envire MLS Tests simulation plugin");
+        LOG_DEBUG( "[EnvireMlsTests::init] First line"); 
         if (! loadGeneralConf(generalConfPath))
         {
           LOG_ERROR("Problem loading the main conf %s", generalConfPath.c_str());
         }
-        // Get the envire mls plugin and load through it the map
-        mlsPlugin = libManager->acquireLibraryAs<envire_mls::EnvireMls>("envire_mls");
-        LOG_DEBUG("%s library acquired", mlsPlugin -> getLibName().c_str());
+        else{
+          if (! loadSceneConf(sceneConfPath))
+          {
+            LOG_ERROR("Problem loading the scene conf %s", sceneConfPath.c_str());
+          }
+          else
+          {
+            sceneLoaded = loadScene();
+          }
+        }
+#ifndef SIM_CENTER_FRAME_NAME
+        LOG_DEBUG( "[EnvireMlsTests::init] SIM_CENTER_FRAME_NAME is not defined "); 
+#endif
+#ifdef SIM_CENTER_FRAME_NAME
+        LOG_DEBUG( "[EnvireMlsTests::init] SIM_CENTER_FRAME_NAME is defined: %s", SIM_CENTER_FRAME_NAME.c_str()); 
+#endif
+        /*
+        std::shared_ptr<envire::core::EnvireGraph> simGraph = envire_managers::EnvireStorageManager::instance()->getGraph();
+        if (simGraph->containsFrame(MLS_FRAME_NAME))
+        {
+          envire::core::Transform tfMlsCen = simGraph->getTransform(MLS_FRAME_NAME, SIM_CENTER_FRAME_NAME);
+          LOG_DEBUG("[EnvireMlsTests::Init]: Transformation between MLS and center %s", tfMlsCen.toString()); 
+        }
+        */
+        control->sim->StartSimulation();
+        LOG_INFO("[EnvireMlsTests::init] Simulation started for the test");
+        
       }
 
       void EnvireMlsTests::reset() {
@@ -88,25 +117,17 @@ namespace mars {
 
 
       void EnvireMlsTests::update(sReal time_ms) {
-
-        if (not mlsLoaded){
-          LOG_DEBUG("Loading the MLS Map "); 
-          std::string dumpedGraphPath = std::getenv("AUTOPROJ_CURRENT_ROOT") + TEST_MLS_PATH;
-          LOG_DEBUG( "Mls to test with: %s", dumpedGraphPath.c_str()); 
-          // FIXME: mlsPlugin -> loadMLSMap(dumpedGraphPath, DUMPED_MLS_FRAME_NAME);
-          mlsLoaded = true;
-          LOG_DEBUG("Loading of the MLS Map has been commanded"); 
+        if (goalReached())
+        {
+          LOG_DEBUG( "[EnvireMlsTests::update] Goal was reached, simulation will be stopped"); 
+          control->sim->StopSimulation();
         }
-        if (not robotLoaded){
-          LOG_DEBUG("Loading the robot "); 
-          LOG_DEBUG("Loading of the robot has been commanded"); 
-          loadRobot();
-          robotLoaded = true;
-        }
-        if (not robotMoving){
-          LOG_DEBUG("About to send control commands to the robot"); 
-          cmdFwdDrive();
-          robotMoving = true;
+        else
+        {
+          if (!robotMoving)
+          {
+              moveForward();    
+          }
         }
       }
 
@@ -123,17 +144,21 @@ namespace mars {
         }
       }
 
-      void EnvireMlsTests::loadMlsMap()
+      bool EnvireMlsTests::loadMlsMap()
       {
+        bool loaded = false;
         if (generalConf["mode"] == loadMlsGraphTag)
         {
             std::string testMlsPath = testMlsDataPath + generalConf["envire_graph_path"];
             Vector mlsRot(0,0,mlsOri);
             control->sim->loadScene(testMlsPath, MLS_NAME, mlsPos, mlsRot);
+            loaded = true;
         }
+        return loaded;
       }
 
-      void EnvireMlsTests::loadRobot(){
+      bool EnvireMlsTests::loadRobot(){
+        bool loaded = false;
         LOG_DEBUG("Loading robot")
         //control->sim->loadScene(std::getenv(ENV_AUTOPROJ_ROOT) + ASGUARD_PATH, ROBOT_NAME, ROBOT_TEST_POS, ROBOT_TEST_Z_ROT);
         LOG_DEBUG(
@@ -155,16 +180,40 @@ namespace mars {
         //control->nodes->setTfToCenter(robotRootFrame, robotTf);
         //control->nodes->setTfToCenter(robotRootFrame, robotPose.getTransform());
         //LOG_DEBUG("Robot moved");
+        loaded = true; // TODO check somehow
+        return loaded;
       }
 
-      void EnvireMlsTests::cmdFwdDrive()
+      bool EnvireMlsTests::loadScene()
+      {
+        bool loaded = false;
+        if (loadMlsMap())
+        {
+          if (loadRobot())
+          {
+            loaded = true;
+            LOG_INFO("[EnvireMlsTests::loadScene] Scene loaded");
+          }
+          else
+          {
+            LOG_ERROR("[EnvireMlsTests::loadScene] Problem loading the robot");
+          }
+        }
+        else
+        {
+            LOG_ERROR("[EnvireMlsTests::loadScene] Problem loading the mls");
+        }
+        return loaded;
+      }
+
+      void EnvireMlsTests::moveForward()
       {
           mars::sim::SimMotor* motor;
           for(auto it: MOTOR_NAMES) {
             motor = control->motors->getSimMotorByName(it);
-            LOG_DEBUG( "Motor %s received", it.c_str()); 
-            //motor->setVelocity(SPEED);
-            LOG_DEBUG( "TODO: Motor %s set velocity sent", it.c_str()); 
+            LOG_DEBUG( "[EnvireMlsTests::moveForwards] Motor %s received", it.c_str()); 
+            motor->setVelocity(SPEED);
+            LOG_DEBUG( "[EnvireMlsTests::moveForwards] Motor %s set velocity sent", it.c_str()); 
           }
           robotMoving = true;
       }
@@ -198,6 +247,92 @@ namespace mars {
         }
         return loaded;
       }
+
+      bool EnvireMlsTests::loadSceneConf(const std::string & confPath)
+      {
+        bool loaded = false;
+        YAML::Node conf;
+        if(yamlLoad(confPath, conf))
+        {
+          for (const std::string& item: confItems)
+          {
+            LOG_INFO("[EnvireMlsTests::loadSceneConf] confItem: %s", item.c_str());
+            if (conf[item])
+            {
+              switch (mapStringParams[item]){
+                case robPosP:
+                {
+                  std::vector<double> robPosV = conf["robPos"].as<std::vector<double>>();
+                  robPos = {robPosV[0], robPosV[1], robPosV[2]};
+                  LOG_INFO(
+                      "[EnvireMlsTests::loadSceneConf] Loaded this position for the rover: %f, %f, %f ",
+                      robPos[0], robPos[1], robPos[2]);
+                  break;
+
+                }
+                case robOriP:
+                {
+                  robOri = conf["robOri"].as<double>();
+                  LOG_INFO(
+                      "[EnvireMlsTests::loadSceneConf] Loaded orientation for the robot: %f ",
+                      robOri);
+                  break;
+                }
+                case mlsPosP:
+                {
+                  std::vector<double> mlsPosV = conf["mlsPos"].as<std::vector<double>>();
+                  mlsPos = {mlsPosV[0], mlsPosV[1], mlsPosV[2]};
+                  LOG_INFO(
+                      "[EnvireMlsTests::loadSceneConf] Loaded this position for the mls: %f, %f, %f",
+                      mlsPos[0], mlsPos[1], mlsPos[2]);
+                  break;
+                }
+                case mlsOriP:
+                {
+                  mlsOri = conf["mlsOri"].as<double>();
+                  LOG_INFO(
+                      "[EnvireMlsTests::loadSceneConf] Loaded orientation for the mls: %f ",
+                      mlsOri);
+                  break;
+                }
+                case robGoalP:
+                {
+                  std::vector<double> robGoalV = conf["robGoal"].as<std::vector<double>>();
+                  robGoalPos = {robGoalV[0], robGoalV[1], robGoalV[2]};
+                  LOG_INFO(
+                      "[EnvireMlsTests::loadSceneConf] Loaded goal position: %f, %f, %f ",
+                      robGoalPos[0], robGoalPos[1], robGoalPos[2]);
+                  break;
+                }
+              }
+            }
+          }
+          loaded = true;
+        }
+        return loaded;
+      }
+
+      bool EnvireMlsTests::goalReached()
+      {
+        std::shared_ptr<envire::core::EnvireGraph> simGraph = envire_managers::EnvireStorageManager::instance()->getGraph();
+        envire::core::Transform robPosTf = simGraph->getTransform(SIM_CENTER_FRAME_NAME, ROBOT_ROOT_LINK_NAME);
+        base::Position robPos = robPosTf.transform.translation;
+        Eigen::Vector3f v;
+        Eigen::Vector3f w;
+        v << robPos[0], robPos[1], robPos[2];
+        w << robGoalPos[0], robGoalPos[1], robGoalPos[2];
+        Eigen::Vector3f diff = v - w;
+        float distance = diff.norm();
+        bool reached = (distance <= 0.2);
+        if (reached)
+        {
+          LOG_DEBUG( "[EnvireMlsTests::goalReached] Target reached"); 
+        }
+        LOG_DEBUG( "[EnvireMlsTests::goalReached] Distance: %f", distance); 
+        return reached;
+      }
+
+
 
     } // end of namespace envire_mls_tests
   } // end of namespace plugins

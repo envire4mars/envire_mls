@@ -10,5 +10,6 @@
     <depend package="slam/pcl" />
     <depend package="envire/envire_collider_mls" />
     <depend package="simulation/envire_mls" />
+    <depend package="simulation/envire_graph_loader" />
     <tags>needs_opt</tags>
 </package>
