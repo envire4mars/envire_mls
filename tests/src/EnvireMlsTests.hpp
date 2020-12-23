@@ -51,11 +51,7 @@ namespace mars {
     namespace envire_mls_tests {
 
       // inherit from MarsPluginTemplateGUI for extending the gui
-      class EnvireMlsTests: public mars::interfaces::MarsPluginTemplate,
-        public mars::data_broker::ReceiverInterface,
-        // for gui
-        // public mars::main_gui::MenuInterface,
-        public mars::cfg_manager::CFGClient {
+      class EnvireMlsTests: public mars::interfaces::MarsPluginTemplate{
 
       public:
         EnvireMlsTests(lib_manager::LibManager *theManager);
@@ -72,16 +68,6 @@ namespace mars {
         void init();
         void reset();
         void update(mars::interfaces::sReal time_ms);
-
-        // DataBrokerReceiver methods
-        virtual void receiveData(const data_broker::DataInfo &info,
-                                 const data_broker::DataPackage &package,
-                                 int callbackParam);
-        // CFGClient methods
-        virtual void cfgUpdateProperty(cfg_manager::cfgPropertyStruct _property);
-
-        // MenuInterface methods
-        //void menuAction(int action, bool checked = false);
 
         // EnvireMlsTests methods
         bool loadMlsMap(); // Loads the mls for the test

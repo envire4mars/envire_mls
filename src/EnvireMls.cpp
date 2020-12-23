@@ -66,6 +66,7 @@ namespace mars {
       EnvireMls::EnvireMls(lib_manager::LibManager *theManager)
         : MarsPluginTemplate(theManager, "EnvireMls") 
       {
+        LOG_DEBUG("EnvireMls plugin instantiated");
         // I think we are not using this library at all anymore
         //mlsCollision = envire::collision::MLSCollision::getInstance();
       }

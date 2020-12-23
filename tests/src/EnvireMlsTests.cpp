@@ -57,6 +57,8 @@ namespace mars {
         mlsLoaded = false;
         robotLoaded = false;
         robotMoving = false;
+        confLoaded = false;
+        sceneLoaded = false;
 
         //Needed? mlsCollision = envire::collision::MLSCollision::getInstance();
         robPos = {0.0, 0.0, 0.0};
@@ -68,14 +70,12 @@ namespace mars {
         mapStringParams["mlsPos"] = mlsPosP;
         mapStringParams["mlsOri"] = mlsOriP;
         mapStringParams["robGoal"] = robGoalP;
-        confLoaded = false;
+
         mlsFrameId = MLS_FRAME_NAME;
-        sceneLoaded = false;
-        robotMoving = false;
       }
   
       void EnvireMlsTests::init() {
-        LOG_DEBUG( "[EnvireMlsTests::init] First line"); 
+        LOG_INFO( "[EnvireMlsTests::init] First line"); 
         if (! loadGeneralConf(generalConfPath))
         {
           LOG_ERROR("Problem loading the main conf %s", generalConfPath.c_str());
@@ -117,6 +117,7 @@ namespace mars {
 
 
       void EnvireMlsTests::update(sReal time_ms) {
+        LOG_INFO( "[EnvireMlsTests::update] First line"); 
         if (goalReached())
         {
           LOG_DEBUG( "[EnvireMlsTests::update] Goal was reached, simulation will be stopped"); 
@@ -128,19 +129,6 @@ namespace mars {
           {
               moveForward();    
           }
-        }
-      }
-
-      void EnvireMlsTests::receiveData(const data_broker::DataInfo& info,
-                                    const data_broker::DataPackage& package,
-                                    int id) {
-        // package.get("force1/x", force);
-      }
-  
-      void EnvireMlsTests::cfgUpdateProperty(cfg_manager::cfgPropertyStruct _property) {
-
-        if(_property.paramId == example.paramId) {
-          example.dValue = _property.dValue;
         }
       }
 
