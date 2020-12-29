@@ -11,5 +11,7 @@
     <depend package="envire/envire_collider_mls" />
     <depend package="simulation/envire_mls" />
     <depend package="simulation/envire_graph_loader" />
+    <depend package="simulation/envire_smurf_loader" />
+    <depend package="gui/osgviz_mars-plugins/mars_graphics" />
     <tags>needs_opt</tags>
 </package>

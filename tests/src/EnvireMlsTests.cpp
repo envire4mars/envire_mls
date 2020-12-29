@@ -118,19 +118,23 @@ namespace mars {
 
       void EnvireMlsTests::update(sReal time_ms) {
         LOG_INFO( "[EnvireMlsTests::update] First line"); 
-        if (goalReached())
+        if (sceneLoaded)
         {
-          LOG_DEBUG( "[EnvireMlsTests::update] Goal was reached, simulation will be stopped"); 
-          control->sim->StopSimulation();
-        }
-        else
-        {
-          if (!robotMoving)
+          if (goalReached())
           {
-              moveForward();    
+            LOG_DEBUG( "[EnvireMlsTests::update] Goal was reached, simulation will be stopped"); 
+            control->sim->StopSimulation();
+          }
+          else
+          {
+            if (!robotMoving)
+            {
+                moveForward();    
+            }
           }
         }
       }
+
 
       bool EnvireMlsTests::loadMlsMap()
       {
@@ -148,7 +152,9 @@ namespace mars {
       bool EnvireMlsTests::loadRobot(){
         bool loaded = false;
         LOG_DEBUG("Loading robot")
-        //control->sim->loadScene(std::getenv(ENV_AUTOPROJ_ROOT) + ASGUARD_PATH, ROBOT_NAME, ROBOT_TEST_POS, ROBOT_TEST_Z_ROT);
+        control->sim->loadScene(
+          asguardPath, 
+          robotName, ROBOT_TEST_POS, ROBOT_TEST_Z_ROT);
         LOG_DEBUG(
           "Setting the robot to < x, y, z, rot_z>: %g, %g, %g, %g",
           ROBOT_TEST_POS.x(), ROBOT_TEST_POS.y(), ROBOT_TEST_POS.z(), ROBOT_TEST_Z_ROT.z()
@@ -174,12 +180,12 @@ namespace mars {
 
       bool EnvireMlsTests::loadScene()
       {
-        bool loaded = false;
         if (loadMlsMap())
         {
+          mlsLoaded = true;
           if (loadRobot())
           {
-            loaded = true;
+            robotLoaded = true;
             LOG_INFO("[EnvireMlsTests::loadScene] Scene loaded");
           }
           else
@@ -191,7 +197,7 @@ namespace mars {
         {
             LOG_ERROR("[EnvireMlsTests::loadScene] Problem loading the mls");
         }
-        return loaded;
+        return (robotLoaded && mlsLoaded);
       }
 
       void EnvireMlsTests::moveForward()
@@ -302,21 +308,34 @@ namespace mars {
 
       bool EnvireMlsTests::goalReached()
       {
+        bool ok = true;
+        bool reached = false;
+        envire::core::Transform robPosTf;
         std::shared_ptr<envire::core::EnvireGraph> simGraph = envire_managers::EnvireStorageManager::instance()->getGraph();
-        envire::core::Transform robPosTf = simGraph->getTransform(SIM_CENTER_FRAME_NAME, ROBOT_ROOT_LINK_NAME);
-        base::Position robPos = robPosTf.transform.translation;
-        Eigen::Vector3f v;
-        Eigen::Vector3f w;
-        v << robPos[0], robPos[1], robPos[2];
-        w << robGoalPos[0], robGoalPos[1], robGoalPos[2];
-        Eigen::Vector3f diff = v - w;
-        float distance = diff.norm();
-        bool reached = (distance <= 0.2);
-        if (reached)
-        {
-          LOG_DEBUG( "[EnvireMlsTests::goalReached] Target reached"); 
+        try{
+          robPosTf = simGraph->getTransform(SIM_CENTER_FRAME_NAME, ROBOT_ROOT_LINK_NAME);
         }
-        LOG_DEBUG( "[EnvireMlsTests::goalReached] Distance: %f", distance); 
+        catch(const std::exception& e){
+          LOG_ERROR(e.what());
+          LOG_ERROR("Failed to find the robot in the envire graph. Does the frame %s exist in the graph?", ROBOT_ROOT_LINK_NAME.c_str());
+          ok = false;
+        }
+        if (ok)
+        {
+          base::Position robPos = robPosTf.transform.translation;
+          Eigen::Vector3f v;
+          Eigen::Vector3f w;
+          v << robPos[0], robPos[1], robPos[2];
+          w << robGoalPos[0], robGoalPos[1], robGoalPos[2];
+          Eigen::Vector3f diff = v - w;
+          float distance = diff.norm();
+          reached = (distance <= 0.2);
+          if (reached)
+          {
+            LOG_DEBUG( "[EnvireMlsTests::goalReached] Target reached"); 
+          }
+          LOG_DEBUG( "[EnvireMlsTests::goalReached] Distance: %f", distance); 
+        }
         return reached;
       }
 
