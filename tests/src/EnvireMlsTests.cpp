@@ -152,16 +152,15 @@ namespace mars {
       bool EnvireMlsTests::loadRobot(){
         bool loaded = false;
         LOG_DEBUG("Loading robot")
-        control->sim->loadScene(
-          asguardPath, 
-          robotName, ROBOT_TEST_POS, ROBOT_TEST_Z_ROT);
+        utils::Vector robRot(0,0,robOri);
+        control->sim->loadScene(asguardPath, robotName, robPos, robRot);
         LOG_DEBUG(
           "Setting the robot to < x, y, z, rot_z>: %g, %g, %g, %g",
-          ROBOT_TEST_POS.x(), ROBOT_TEST_POS.y(), ROBOT_TEST_POS.z(), ROBOT_TEST_Z_ROT.z()
+          robPos[0], robPos[1], robPos[2], robOri
         );
         base::samples::RigidBodyState robotPose;
-        robotPose.position << ROBOT_TEST_POS.x(), ROBOT_TEST_POS.y(), ROBOT_TEST_POS.z();
-        robotPose.orientation = Eigen::AngleAxisd(ROBOT_TEST_Z_ROT.z(), Eigen::Vector3d::UnitZ());
+        robotPose.position << robPos[0], robPos[1], robPos[2];
+        robotPose.orientation = Eigen::AngleAxisd(robOri, Eigen::Vector3d::UnitZ());
         envire::core::Transform robotTf(robotPose.position, robotPose.orientation);
         //envire::core::Transform robotTf = robotPose.getTransform();
         LOG_DEBUG(
