@@ -17,8 +17,10 @@ pkg_check_modules(PKGCONFIG REQUIRED
                   mars_sim
                   #envire_collider_mls
                   envire_smurf_loader
+                  envire_fcl
                   ${PCL_LIBS}
                   base-types
+                  ode
 )
 include_directories(${PKGCONFIG_INCLUDE_DIRS})
 link_directories(${PKGCONFIG_LIBRARY_DIRS})

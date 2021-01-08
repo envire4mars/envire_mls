@@ -28,17 +28,20 @@
 
 #pragma once
 
+#include <ode/contact.h>
 #include <mars/interfaces/sim/MarsPluginTemplate.h>
 #include <mars/interfaces/sim/MotorManagerInterface.h>
 #include <mars/interfaces/MARSDefs.h>
 #include <mars/interfaces/NodeData.h>
 
+#include <mars/sim/ContactsPhysics.hpp>
 #include <string>
 
 #include <envire_core/graph/EnvireGraph.hpp>
 #include <envire_core/items/Item.hpp>
 
 //#include <envire_collider_mls/MLSCollision.hpp>
+#include <envire_fcl/Collision.hpp>
 
 #include <maps/grid/MLSMap.hpp>
 
@@ -76,11 +79,25 @@ namespace mars {
         void init();
         void reset();
         void update(mars::interfaces::sReal time_ms);
+        void getSomeData(void* data);
         void preStepChecks(void);
+        //void computeMLSCollisions(void);
+        std::vector<mars::sim::ContactsPhysics> getContactPoints(void);
+        void initContactParams(
+          std::shared_ptr<dContact[]> contactPtr,
+          const smurf::ContactParams contactParams, int numContacts);
+        void dumpFCLResult(const fcl::CollisionResultf &result, std::shared_ptr<dContact[]> contactPtr);//, const envire::core::FrameId frameId);
+        //void createFeedbackJoints( const envire::core::FrameId frameId, const smurf::ContactParams contactParams, dContact *contactPtr, int numContacts);
+        
+        std::shared_ptr<dContact[]> createContacts( 
+          const fcl::CollisionResultf & result, 
+          smurf::Collidable collidable, 
+          const std::vector<std::shared_ptr<interfaces::NodeInterface>> & NodeIfsPtrsconst);
 
-        // EnvireMls methods
+        // TODO: Consider moving this methods to another plugin, specialized on loading mls from .graph files
         void loadMLSMap(const std::string & mlsPath, const std::string & mls_frame_name);
         void addMLSNode();
+
         void getAllColFrames(void);
 
 
@@ -107,6 +124,14 @@ namespace mars {
 
         bool mlsLoaded;
         mlsType mls;
+
+        std::vector<mars::sim::ContactsPhysics> contacts; 
+
+        // Used in the computation of contacts/collisions
+        // We keep same naming as in mars core
+        bool create_contacts, log_contacts; 
+        int num_contacts;
+        mars::interfaces::sReal ground_cfm, ground_erp;
 
 
         //EnvireSmurfLoader::EnvireSmurfLoader* theLoader;
