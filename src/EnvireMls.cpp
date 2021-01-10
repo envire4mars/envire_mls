@@ -72,6 +72,7 @@ namespace mars {
         centerFrameId = SIM_CENTER_FRAME_NAME;
         ground_cfm = 0.00000001;
         ground_erp = 0.1;
+        mlsLoaded = false; // Loaded in the graph and also as attribute of this class
         // I think we are not using this library at all anymore
         //mlsCollision = envire::collision::MLSCollision::getInstance();
       }
@@ -104,17 +105,26 @@ namespace mars {
 
       }
 
-      mlsPrec EnvireMls::getMLSFromFrame(const envire::core::EnvireGraph & graph, envire::core::FrameId frameId)
+      mlsPrec EnvireMls::getMLSFromFrame(const std::shared_ptr<envire::core::EnvireGraph> & graph, envire::core::FrameId frameId)
       {
         /*
         Extract from the graph the mls stored in frameId. It is assumed that
-        the mls is stored in Kalman format and has to be converted to precalculated.
+        the mls is stored in precalculated format //OLD: and has to be converted to precalculated.
         */
-        EnvireGraph::ItemIterator<Item<mlsKal>> beginItem, endItem;
-        boost::tie(beginItem, endItem) = graph.getItems<Item<mlsKal>>(frameId);
-        mlsKal mlsKal;
-        mlsPrec mls;
-        mls = beginItem->getData(); // Here the conversion to Precalculated occurs (mlsPerc <-> mlsKal)
+        EnvireGraph::ItemIterator<Item<mlsPrec>> beginItem, endItem;
+        boost::tie(beginItem, endItem) = graph->getItems<Item<mlsPrec>>(frameId);
+        //EnvireGraph::ItemIterator<Item<mlsKal>> beginItem, endItem;
+        //boost::tie(beginItem, endItem) = graph->getItems<Item<mlsKal>>(frameId);
+        if (beginItem != endItem)
+        {
+          mls = beginItem->getData(); // OLD: Here the conversion to Precalculated occurs (mlsPerc <-> mlsKal)
+          mlsLoaded = true;
+          LOG_INFO("MLS loaded in envireMLS");
+        }
+        else
+        {
+          LOG_INFO("No MLS could be loaded");
+        }
         return mls;
       }
 
@@ -130,33 +140,35 @@ namespace mars {
         std::shared_ptr<envire::core::EnvireGraph> simGraph = envire_managers::EnvireStorageManager::instance()->getGraph();
         if(simGraph->containsFrame(mlsFrameId) && (!mlsLoaded))
         {
-          envire::core::EnvireGraph::ItemIterator<envire::core::Item<mlsType>> beginItem, endItem;
-          boost::tie(beginItem, endItem) = simGraph->getItems<envire::core::Item<mlsType>>(mlsFrameId);
-          if (beginItem != endItem)
-          {
-            LOG_DEBUG("[EnvireMls::preStepChecks]: An mls was found in the simulation graph");
-            mls = beginItem->getData();
-            mlsLoaded = true;
-            LOG_DEBUG("[EnvireMls::preStepChecks]: Mls map was fetched from the graph");
-          }
-          else
-          {
-            LOG_DEBUG("[EnvireMls::preStepChecks]: No Mls map was not found yet in the graph");
-          }
+          //envire::core::EnvireGraph::ItemIterator<envire::core::Item<mlsType>> beginItem, endItem;
+          //boost::tie(beginItem, endItem) = simGraph->getItems<envire::core::Item<mlsType>>(mlsFrameId);
+          //if (beginItem != endItem)
+          //{
+          //  LOG_DEBUG("[EnvireMls::preStepChecks]: An mls was found in the simulation graph");
+          //  mlsKal mlsKal;
+          //  mls = beginItem->getData();
+          //  mlsLoaded = true;
+          //  LOG_DEBUG("[EnvireMls::preStepChecks]: Mls map was fetched from the graph");
+          //}
+          mls = getMLSFromFrame(simGraph, mlsFrameId);
+          //else
+          //{
+          //  LOG_DEBUG("[EnvireMls::preStepChecks]: No Mls map was not found yet in the graph");
+          //}
         }
       }
 
-      void EnvireMls::addMLSNode()
-      {
-        // TODO for loading various MLSs.
-        // If the frame where the MLS should be
-        // stored does not exists, create it by now we assume that the frame to
-        // add to is the default one for the mls, created in the init step
-        NodeData* nodePtr = setUpNodeData();
-        std::shared_ptr<envire::core::EnvireGraph> simGraph = envire_managers::EnvireStorageManager::instance()->getGraph();
-        envire::core::Item<NodeData>::Ptr itemPtr(new envire::core::Item<NodeData>(*nodePtr));
-        simGraph->addItemToFrame(mlsFrameId, itemPtr);        
-      }    
+      //void EnvireMls::addMLSNode()
+      //{
+      //  // TODO for loading various MLSs.
+      //  // If the frame where the MLS should be
+      //  // stored does not exists, create it by now we assume that the frame to
+      //  // add to is the default one for the mls, created in the init step
+      //  NodeData* nodePtr = setUpNodeData();
+      //  std::shared_ptr<envire::core::EnvireGraph> simGraph = envire_managers::EnvireStorageManager::instance()->getGraph();
+      //  envire::core::Item<NodeData>::Ptr itemPtr(new envire::core::Item<NodeData>(*nodePtr));
+      //  simGraph->addItemToFrame(mlsFrameId, itemPtr);        
+      //}    
 
       /** 
       *
@@ -462,7 +474,7 @@ namespace mars {
         if (simGraph->containsFrame(mlsFrameId))
         {
           envire::core::Transform tfMlsCen = simGraph->getTransform(mlsFrameId, centerFrameId);
-          LOG_DEBUG("[EnvireMls::computeMLSCollisions]: Transformation between MLS and center %s", tfMlsCen.toString().c_str());
+          LOG_DEBUG("[EnvireMls::getContactPoints]: Transformation between MLS and center %s", tfMlsCen.toString().c_str());
         }
         //
         // Here only the collisions between the MLS and collidable objects are
@@ -472,16 +484,18 @@ namespace mars {
         int countCollisions = 0;
         for(unsigned int frameIndex = 0; frameIndex<colFrames.size(); ++frameIndex)
         {
-          //LOG_DEBUG("[WorldPhysics::computeMLSCollisions]: Collision related to frame %s", colFrames[frameIndex]);
-          envire::core::Transform tfColRobCen = simGraph->getTransform(centerFrameId, colFrames[frameIndex]);
+          LOG_DEBUG("[EnvireMls::getContactPoints]: Collision related to frame %s", colFrames[frameIndex].c_str());
+          envire::core::Transform tfColCen = simGraph->getTransform(centerFrameId, colFrames[frameIndex]);
           //LOG_DEBUG("[WorldPhysics::computeMLSCollisions]: Transformation between sim center and robot colission frame %s", colFrames[frameIndex]);
-          //LOG_DEBUG("[WorldPhysics::computeMLSCollisions]: %s", tfColRobCen.toString().c_str());
+          //LOG_DEBUG("[WorldPhysics::computeMLSCollisions]: %s", tfColCen.toString().c_str());
           // Transformation must be from the mls frame to the colision object frame
           envire::core::Transform tfMlsCol = simGraph->getTransform(mlsFrameId, colFrames[frameIndex]);
           fcl::Transform3f trafo = tfMlsCol.transform.getTransform().cast<float>(); 
           //LOG_DEBUG("[WorldPhysics::computeMLSCollisions]: About to provide transformation between MLS and %s", colFrames[frameIndex]); 
           //LOG_DEBUG("[WorldPhysics::computeMLSCollisions]: Transformation according to envire graph: %s", tfMlsCol.toString().c_str());
-          //std::cout << "[WorldPhysics::computeMLSCollisions]: Transformation in fcl format: " << trafo << std::endl;
+          std::stringstream ss;
+          ss << trafo.matrix();
+          LOG_DEBUG("[EnvireMls::getContactPoints]: Trafo \n %s", ss.str().c_str());
           // Get the collision objects -Assumes only one per frame-
           IterCollItem itCols;
           itCols = simGraph->getItem<CollisionItem>(colFrames[frameIndex]); 
@@ -516,7 +530,7 @@ namespace mars {
           }
           if (collisionComputed)
           {
-            //std::cout << "\n[WorldPhysics::computeMLSCollisions]: isCollision()==" << result.isCollision() << std::endl;
+            LOG_DEBUG("[EnvireMls::computeMLSCollisions]: isCollision(): %s", result.isCollision() ? "true" : "false");
             if (result.isCollision())
             {
               //std::cout << "\n [WorldPhysics::computeMLSCollisions]: Collision detected related to frame " << colFrames[frameIndex] << std::endl;
@@ -549,111 +563,110 @@ namespace mars {
               //debugging }
             }
           }
-          return res;
         }
         LOG_DEBUG("Total collisions found: %i", countCollisions);
         //std::cout << "Total collisions found " << countCollisions << std::endl; 
         //std::cout << "Collision Check Finished " << std::endl;
+        return res;
       }
 
 
+      //// TODO: Consider moving this method to another plugin. This plugin should
+      //// be only for identifying the colisions between mls and other objects
+      //void EnvireMls::loadMLSMap(const std::string & mlsPath, const std::string & mls_frame_name)
+      //{
+      //  /* Loads in the envire graph the mls given in the path after
+      //   * deserializing it.
+      //   *
+      //   * The serialized object is graph containing the mls in DUMPED_MLS_FRAME
+      //   */
+      //  std::shared_ptr<envire::core::EnvireGraph> simGraph = envire_managers::EnvireStorageManager::instance()->getGraph();
+      //  EnvireGraph auxMlsGraph;
+      //  auxMlsGraph.loadFromFile(mlsPath);
+      //  FrameId dumpedFrameId(mls_frame_name);
+      //  mlsPrec mlsAux = getMLSFromFrame(auxMlsGraph, dumpedFrameId);
+      //  Item<mlsPrec>::Ptr mlsItemPtr(new Item<mlsPrec>(mlsAux));
+      //  simGraph->addItemToFrame(mlsFrameId, mlsItemPtr);
+      //}
 
-      // TODO: Consider moving this method to another plugin. This plugin should
-      // be only for identifying the colisions between mls and other objects
-      void EnvireMls::loadMLSMap(const std::string & mlsPath, const std::string & mls_frame_name)
-      {
-        /* Loads in the envire graph the mls given in the path after
-         * deserializing it.
-         *
-         * The serialized object is graph containing the mls in DUMPED_MLS_FRAME
-         */
-        std::shared_ptr<envire::core::EnvireGraph> simGraph = envire_managers::EnvireStorageManager::instance()->getGraph();
-        EnvireGraph auxMlsGraph;
-        auxMlsGraph.loadFromFile(mlsPath);
-        FrameId dumpedFrameId(mls_frame_name);
-        mlsPrec mlsAux = getMLSFromFrame(auxMlsGraph, dumpedFrameId);
-        Item<mlsPrec>::Ptr mlsItemPtr(new Item<mlsPrec>(mlsAux));
-        simGraph->addItemToFrame(mlsFrameId, mlsItemPtr);
-      }
-
-      // Seems like it is not used at all for now and might not be needed, since the collision are not computed by ODE
-      NodeData* EnvireMls::setUpNodeData()
-      {
-        /**
-         * Look up the stored mls map and generate the correspondent MLSNodeData
-         *
-         * BUG: Currenty after one step the mls frame position is set to the
-         * centre centerFrame.
-         */
-
-        std::shared_ptr<envire::core::EnvireGraph> simGraph = envire_managers::EnvireStorageManager::instance()->getGraph();
-        mlsPrec mls = getMLSFromFrame(*(simGraph), mlsFrameId);
-        Transform mlsTransform = simGraph->getTransform(centerFrameId, mlsFrameId);
-#ifdef DEBUG
-            LOG_DEBUG("[EnvireMls::addMLS] Tf x y z %f, %f, %f", 
-                mlsTransform.transform.translation.x(), 
-                mlsTransform.transform.translation.y(), 
-                mlsTransform.transform.translation.z());
-#endif
-        Vector pos = mlsTransform.transform.translation;
-        NodeData* node(new NodeData);
-        //NodeData* node(new NodeData);
-        node->init(mlsFrameId, pos);
-    
-        LOG_DEBUG("EnvireMls: Missing definition of NODE_TYPE_MLS");
-        //node->physicMode = interfaces::NODE_TYPE_MLS;
-
-	     boost::shared_ptr<maps::grid::MLSMapPrecalculated> mlsPtr(& mls);
-        // Store MLS geometry in simulation nodeA
-        // Do we have to do this? I think not...
-        //node->g_mls = (void*)(mlsCollision->createNewCollisionObject(mlsPtr));//_userdata);	
-
-        node->pos = mlsTransform.transform.translation; // The position was already set
-        node->rot = mlsTransform.transform.orientation; // The position was already set
-
-        // The position should be read from the envire graph
-
-        //dVector3 pos; // = mlsTransform.transform.translation;
-        //pos[ 0 ] = mlsTransform.transform.translation.x();
-        //pos[ 1 ] = mlsTransform.transform.translation.y();
-        //pos[ 2 ] = mlsTransform.transform.translation.z();
-
-        // Rotate so Z is up, not Y (which is the default orientation)
-        // NOTE is this to be done for all MLS or only for this particular case?
-        dMatrix3 R;
-        dRSetIdentity( R );
-        //dRFromAxisAndAngle( R, 1, 0, 0, (3.141592/180) * 90 );  //DEGTORAD
-
-        LOG_DEBUG("EnvireMls SetUp node position is not implemented yet");
-        /*
-        // Place it.
-        dGeomSetRotation( (dGeomID)node->g_mls, R );
-#ifdef DEBUG
-            LOG_DEBUG("[EnvireMls::addMLS] Set Position to %f, %f, %f", pos[0], pos[1], pos[2]);
-            LOG_DEBUG("[EnvireMls::addMLS] Tf x y z %f, %f, %f", 
-                mlsTransform.transform.translation.x(), 
-                mlsTransform.transform.translation.y(), 
-                mlsTransform.transform.translation.z());
-#endif
-        dGeomSetPosition( (dGeomID)node->g_mls, pos[0], pos[1], pos[2]);
-
-        // set geom data (move to its own method)
-        mars::sim::geom_data* gd = new mars::sim::geom_data;
-        (*gd).setZero();
-        gd->sense_contact_force = GD_SENSE_CONTACT_FORCE;
-        gd->parent_geom = GD_PARENT_GEOM;
-        gd->c_params.cfm = GD_C_PARAMS_CFM;
-        gd->c_params.erp = GD_C_PARAMS_ERP;
-        gd->c_params.bounce = GD_C_PARAMS_BOUNCE;
-        dGeomSetData((dGeomID)node->g_mls, gd);
-
-        node->movable = false;	
-        */
-        return node;
-      }
+//      // Seems like it is not used at all for now and might not be needed, since the collision are not computed by ODE
+//      NodeData* EnvireMls::setUpNodeData()
+//      {
+//        /**
+//         * Look up the stored mls map and generate the correspondent MLSNodeData
+//         *
+//         * BUG: Currenty after one step the mls frame position is set to the
+//         * centre centerFrame.
+//         */
+//
+//        std::shared_ptr<envire::core::EnvireGraph> simGraph = envire_managers::EnvireStorageManager::instance()->getGraph();
+//        mlsPrec mls = getMLSFromFrame(simGraph, mlsFrameId);
+//        Transform mlsTransform = simGraph->getTransform(centerFrameId, mlsFrameId);
+//#ifdef DEBUG
+//            LOG_DEBUG("[EnvireMls::addMLS] Tf x y z %f, %f, %f", 
+//                mlsTransform.transform.translation.x(), 
+//                mlsTransform.transform.translation.y(), 
+//                mlsTransform.transform.translation.z());
+//#endif
+//        Vector pos = mlsTransform.transform.translation;
+//        NodeData* node(new NodeData);
+//        //NodeData* node(new NodeData);
+//        node->init(mlsFrameId, pos);
+//    
+//        LOG_DEBUG("EnvireMls: Missing definition of NODE_TYPE_MLS");
+//        //node->physicMode = interfaces::NODE_TYPE_MLS;
+//
+//	     boost::shared_ptr<maps::grid::MLSMapPrecalculated> mlsPtr(& mls);
+//        // Store MLS geometry in simulation nodeA
+//        // Do we have to do this? I think not...
+//        //node->g_mls = (void*)(mlsCollision->createNewCollisionObject(mlsPtr));//_userdata);	
+//
+//        node->pos = mlsTransform.transform.translation; // The position was already set
+//        node->rot = mlsTransform.transform.orientation; // The position was already set
+//
+//        // The position should be read from the envire graph
+//
+//        //dVector3 pos; // = mlsTransform.transform.translation;
+//        //pos[ 0 ] = mlsTransform.transform.translation.x();
+//        //pos[ 1 ] = mlsTransform.transform.translation.y();
+//        //pos[ 2 ] = mlsTransform.transform.translation.z();
+//
+//        // Rotate so Z is up, not Y (which is the default orientation)
+//        // NOTE is this to be done for all MLS or only for this particular case?
+//        dMatrix3 R;
+//        dRSetIdentity( R );
+//        //dRFromAxisAndAngle( R, 1, 0, 0, (3.141592/180) * 90 );  //DEGTORAD
+//
+//        LOG_DEBUG("EnvireMls SetUp node position is not implemented yet");
+//        /*
+//        // Place it.
+//        dGeomSetRotation( (dGeomID)node->g_mls, R );
+//#ifdef DEBUG
+//            LOG_DEBUG("[EnvireMls::addMLS] Set Position to %f, %f, %f", pos[0], pos[1], pos[2]);
+//            LOG_DEBUG("[EnvireMls::addMLS] Tf x y z %f, %f, %f", 
+//                mlsTransform.transform.translation.x(), 
+//                mlsTransform.transform.translation.y(), 
+//                mlsTransform.transform.translation.z());
+//#endif
+//        dGeomSetPosition( (dGeomID)node->g_mls, pos[0], pos[1], pos[2]);
+//
+//        // set geom data (move to its own method)
+//        mars::sim::geom_data* gd = new mars::sim::geom_data;
+//        (*gd).setZero();
+//        gd->sense_contact_force = GD_SENSE_CONTACT_FORCE;
+//        gd->parent_geom = GD_PARENT_GEOM;
+//        gd->c_params.cfm = GD_C_PARAMS_CFM;
+//        gd->c_params.erp = GD_C_PARAMS_ERP;
+//        gd->c_params.bounce = GD_C_PARAMS_BOUNCE;
+//        dGeomSetData((dGeomID)node->g_mls, gd);
+//
+//        node->movable = false;	
+//        */
+//        return node;
+//      }
 
       void EnvireMls::getSomeData(void* data) 
-      {
+      { // TODO: if the mls is not loaded, do nothing
         contacts = getContactPoints();
         std::vector<mars::sim::ContactsPhysics> * contactsCheck = 
           static_cast<std::vector<mars::sim::ContactsPhysics> *>(data);

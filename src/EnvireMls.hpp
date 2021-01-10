@@ -95,8 +95,8 @@ namespace mars {
           const std::vector<std::shared_ptr<interfaces::NodeInterface>> & NodeIfsPtrsconst);
 
         // TODO: Consider moving this methods to another plugin, specialized on loading mls from .graph files
-        void loadMLSMap(const std::string & mlsPath, const std::string & mls_frame_name);
-        void addMLSNode();
+        //void loadMLSMap(const std::string & mlsPath, const std::string & mls_frame_name);
+        //void addMLSNode();
 
         void getAllColFrames(void);
 
@@ -105,15 +105,15 @@ namespace mars {
       private:
 
         //void deserializeMLS(const std::string & mlsPath);
-        mars::interfaces::NodeData* setUpNodeData();
-        mlsPrec getMLSFromFrame(const envire::core::EnvireGraph & graph, envire::core::FrameId mlsFrameId);
+        //mars::interfaces::NodeData* setUpNodeData();
+        mlsPrec getMLSFromFrame(const std::shared_ptr<envire::core::EnvireGraph> & graph, envire::core::FrameId mlsFrameId);
         void moveForwards();
         void loadSlopedFromPLY();
 
         // Private members
-        maps::grid::MLSMapPrecalculated mlsPrecalculated;
+        //maps::grid::MLSMapPrecalculated mlsPrecalculated;
         //envire::collision::MLSCollision *mlsCollision; // We might not need this 
-        boost::shared_ptr<maps::grid::MLSMapPrecalculated> mlsPtr;
+        //boost::shared_ptr<maps::grid::MLSMapPrecalculated> mlsPtr;
 
         // std::shared_ptr<envire::core::EnvireGraph> simGraph; // Getting some segfaults, maybe due to having this as attribute instead of getting it each time?
 
