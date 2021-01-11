@@ -40,7 +40,6 @@
 #include <envire_core/graph/EnvireGraph.hpp>
 #include <envire_core/items/Item.hpp>
 
-//#include <envire_collider_mls/MLSCollision.hpp>
 #include <envire_fcl/Collision.hpp>
 
 #include <maps/grid/MLSMap.hpp>
@@ -80,42 +79,26 @@ namespace mars {
         void reset();
         void update(mars::interfaces::sReal time_ms);
         void getSomeData(void* data);
+
         void preStepChecks(void);
-        //void computeMLSCollisions(void);
         std::vector<mars::sim::ContactsPhysics> getContactPoints(void);
         void initContactParams(
           std::shared_ptr<dContact[]> contactPtr,
           const smurf::ContactParams contactParams, int numContacts);
         void dumpFCLResult(const fcl::CollisionResultf &result, std::shared_ptr<dContact[]> contactPtr);//, const envire::core::FrameId frameId);
-        //void createFeedbackJoints( const envire::core::FrameId frameId, const smurf::ContactParams contactParams, dContact *contactPtr, int numContacts);
         
         std::shared_ptr<dContact[]> createContacts( 
           const fcl::CollisionResultf & result, 
           smurf::Collidable collidable, 
           const std::vector<std::shared_ptr<interfaces::NodeInterface>> & NodeIfsPtrsconst);
 
-        // TODO: Consider moving this methods to another plugin, specialized on loading mls from .graph files
-        //void loadMLSMap(const std::string & mlsPath, const std::string & mls_frame_name);
-        //void addMLSNode();
-
         void getAllColFrames(void);
-
-
 
       private:
 
-        //void deserializeMLS(const std::string & mlsPath);
-        //mars::interfaces::NodeData* setUpNodeData();
         mlsPrec getMLSFromFrame(const std::shared_ptr<envire::core::EnvireGraph> & graph, envire::core::FrameId mlsFrameId);
         void moveForwards();
         void loadSlopedFromPLY();
-
-        // Private members
-        //maps::grid::MLSMapPrecalculated mlsPrecalculated;
-        //envire::collision::MLSCollision *mlsCollision; // We might not need this 
-        //boost::shared_ptr<maps::grid::MLSMapPrecalculated> mlsPtr;
-
-        // std::shared_ptr<envire::core::EnvireGraph> simGraph; // Getting some segfaults, maybe due to having this as attribute instead of getting it each time?
 
         envire::core::FrameId mlsFrameId;
         envire::core::FrameId centerFrameId;
@@ -133,8 +116,6 @@ namespace mars {
         int num_contacts;
         mars::interfaces::sReal ground_cfm, ground_erp;
 
-
-        //EnvireSmurfLoader::EnvireSmurfLoader* theLoader;
 
       }; // end of class definition EnvireMls
 
