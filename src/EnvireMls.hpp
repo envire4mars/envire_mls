@@ -81,13 +81,13 @@ namespace mars {
         void getSomeData(void* data);
 
         void preStepChecks(void);
-        std::vector<mars::sim::ContactsPhysics> getContactPoints(void);
+        bool updateContacts(void);
         void initContactParams(
-          std::shared_ptr<dContact[]> contactPtr,
+          std::shared_ptr<std::vector<dContact>> contactsPtr,
           const smurf::ContactParams contactParams, int numContacts);
-        void dumpFCLResult(const fcl::CollisionResultf &result, std::shared_ptr<dContact[]> contactPtr);//, const envire::core::FrameId frameId);
+        void dumpFCLResult(const fcl::CollisionResultf &result, std::shared_ptr<std::vector<dContact>> contactPtr);
         
-        std::shared_ptr<dContact[]> createContacts( 
+        std::shared_ptr<std::vector<dContact>> createContacts( 
           const fcl::CollisionResultf & result, 
           smurf::Collidable collidable, 
           const std::vector<std::shared_ptr<interfaces::NodeInterface>> & NodeIfsPtrsconst);
@@ -99,6 +99,8 @@ namespace mars {
         mlsPrec getMLSFromFrame(const std::shared_ptr<envire::core::EnvireGraph> & graph, envire::core::FrameId mlsFrameId);
         void moveForwards();
         void loadSlopedFromPLY();
+
+        void conditionalDebugMsg(const std::string trace);
 
         envire::core::FrameId mlsFrameId;
         envire::core::FrameId centerFrameId;
