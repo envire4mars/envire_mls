@@ -83,14 +83,14 @@ namespace mars {
         void preStepChecks(void);
         bool updateContacts(void);
         void initContactParams(
-          std::shared_ptr<std::vector<dContact>> contactsPtr,
+          std::shared_ptr<std::vector<dContact>> & contactsPtr,
           const smurf::ContactParams contactParams, int numContacts);
-        void dumpFCLResult(const fcl::CollisionResultf &result, std::shared_ptr<std::vector<dContact>> contactPtr);
+        void dumpFCLResult(const fcl::CollisionResultf &result, std::shared_ptr<std::vector<dContact>> & contactPtr);
         
         std::shared_ptr<std::vector<dContact>> createContacts( 
           const fcl::CollisionResultf & result, 
-          smurf::Collidable collidable, 
-          const std::vector<std::shared_ptr<interfaces::NodeInterface>> & NodeIfsPtrsconst);
+          smurf::Collidable collidable);
+        //  const std::vector<std::shared_ptr<interfaces::NodeInterface>> & NodeIfsPtrs);
 
         void getAllColFrames(void);
 

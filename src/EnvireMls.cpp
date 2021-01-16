@@ -168,12 +168,14 @@ namespace mars {
        *      - structure which can be used for the generation of the feedback joints
        */
       void EnvireMls::initContactParams(
-        std::shared_ptr<std::vector<dContact>> contactsPtr, 
+        std::shared_ptr<std::vector<dContact>> & contactsPtr, 
         const smurf::ContactParams contactParams, int numContacts)
-        {
+      {
         //MLS Has currently no contact parameters, we will use just the ones of the collidable by now
-        std::vector<dContact> * contacts = contactsPtr.get();
-        contactsPtr->operator[](0).surface.mode = dContactSoftERP | dContactSoftCFM;
+        //std::vector<dContact> * contacts = contactsPtr.get();
+        contactsPtr->reserve(numContacts);
+        contactsPtr->push_back(dContact());
+        contactsPtr->operator[](0).surface.mode = dContactSoftERP | dContactSoftCFM; 
         //contactsPtr[0].surface.soft_cfm = contactParams.cfm;
         contactsPtr->operator[](0).surface.soft_cfm = ground_cfm;
         //std::cout << "[EnvireMls::InitContactParameters] contactsPtr[0].surface.soft_cfm " << contactsPtr[0].surface.soft_cfm << std::endl;
@@ -227,6 +229,7 @@ namespace mars {
         }
         // Apply parametrization to all contacts.
         for (int i=1;i<numContacts;i++){
+          contactsPtr->push_back(dContact());
           contactsPtr->operator[](i) = contactsPtr->operator[](0);
         }
       }
@@ -240,7 +243,7 @@ namespace mars {
        * post:
        *      - matrix with the contact points
        */
-      void EnvireMls::dumpFCLResult(const fcl::CollisionResultf &result, std::shared_ptr<std::vector<dContact>> contactsPtr)
+      void EnvireMls::dumpFCLResult(const fcl::CollisionResultf &result, std::shared_ptr<std::vector<dContact>> & contactsPtr)
       { 
         //std::cout << "[EnvireMls::dumpFCLResults] To Dump: " << std::endl;
         //envire::core::Transform tfColMls = control->graph->getTransform(frameId, MLS_FRAME_NAME); 
@@ -310,12 +313,11 @@ namespace mars {
        */
       std::shared_ptr<std::vector<dContact>> EnvireMls::createContacts(
         const fcl::CollisionResultf & result, 
-        smurf::Collidable collidable, 
-        const std::vector<std::shared_ptr<interfaces::NodeInterface>> & NodeIfsPtrs)
+        smurf::Collidable collidable)
       {
         conditionalDebugMsg("[EnvireMls::CreateContacts] Collidable " + collidable.getName());
         // Init dContact
-        std::shared_ptr<std::vector<dContact>> contactsPtr;
+        std::shared_ptr<std::vector<dContact>> contactsPtr = std::make_shared<std::vector<dContact>>();
         const smurf::ContactParams contactParams = collidable.getContactParams();
         initContactParams(contactsPtr, contactParams, result.numContacts());
         dumpFCLResult(result, contactsPtr);
@@ -411,16 +413,16 @@ namespace mars {
               //std::cout << "\n [WorldPhysics::computeMLSCollisions]: Collision detected related to frame " << colFrames[frameIndex] << std::endl;
               // Here a method createContacts will put the joints that correspond
               // Get the interface to the simNodes at the index
-              std::vector<std::shared_ptr<interfaces::NodeInterface>> nodesIfsPtrs;
-              envire::core::EnvireGraph::ItemIterator<envire::core::Item<std::shared_ptr<mars::sim::SimNode>>> begin, end;
-              boost::tie(begin, end) = simGraph->getItems<envire::core::Item<std::shared_ptr<mars::sim::SimNode>>>(colFrames[frameIndex]);
-              if (begin != end){
-                std::shared_ptr<mars::sim::SimNode> nodePtr = begin->getData();
-                nodesIfsPtrs.push_back(nodePtr->getInterface());
-              }
+              //std::vector<std::shared_ptr<interfaces::NodeInterface>> nodesIfsPtrs;
+              //envire::core::EnvireGraph::ItemIterator<envire::core::Item<std::shared_ptr<mars::sim::SimNode>>> begin, end;
+              //boost::tie(begin, end) = simGraph->getItems<envire::core::Item<std::shared_ptr<mars::sim::SimNode>>>(colFrames[frameIndex]);
+              //if (begin != end){
+              //  std::shared_ptr<mars::sim::SimNode> nodePtr = begin->getData();
+              //  nodesIfsPtrs.push_back(nodePtr->getInterface());
+              //}
 
               mars::sim::ContactsPhysics contacts_col;
-              contacts_col.contactsPtr = createContacts(result, collidable, nodesIfsPtrs);
+              contacts_col.contactsPtr = createContacts(result, collidable);//, nodesIfsPtrs);
               contacts_col.collidable = std::make_shared<smurf::Collidable>(std::move(collidable));
               contacts_col.numContacts = result.numContacts();
 
