@@ -256,20 +256,40 @@ namespace mars {
           for(size_t i=0; i< result.numContacts(); ++i)
           {
             const auto & cont = result.getContact(i);
+            //auto pos = (trafo*cont.pos).transpose();
+            //std::vector<float> pos;
+            //pos.push_back((trafo*cont.pos).transpose()[0]);
+            //pos.push_back((trafo*cont.pos).transpose()[1]);
+            //pos.push_back((trafo*cont.pos).transpose()[2]);
             ss << "[EnvireMls::dumpFCLResults]: Contact transpose " << (trafo * cont.pos).transpose() << "\n";
             ss << "[EnvireMls::dumpFCLResults]: Contact normal transpose (*trafo.linear) " << (trafo.linear() * cont.normal).transpose() << "\n";
             ss << "[EnvireMls::dumpFCLResults]: Contact normal transpose " << cont.normal.transpose() << "\n";
             ss << "[EnvireMls::dumpFCLResults]: Contact penetration depth " << cont.penetration_depth << "\n";
+            //std::stringstream spos;
+            //spos << "Pos: ";
+            //spos << pos <<"\n";
+            //conditionalDebugMsg("Pos: " + std::to_string(pos[0]) + ", " + std::to_string(pos[1]) +", " + std::to_string(pos[2]) );
           }
           LOG_DEBUG(ss.str().c_str());
         #endif
         for(size_t i=0; i< result.numContacts(); ++i)
         {
           const auto & cont = result.getContact(i);
-          const auto & pos = (trafo*cont.pos).transpose();
-          contactsPtr->operator[](i).geom.pos[0] = pos[0];
-          contactsPtr->operator[](i).geom.pos[1] = pos[1];
-          contactsPtr->operator[](i).geom.pos[2] = pos[2];
+          auto pos = (trafo*cont.pos).transpose();
+          //std::stringstream spos;
+          //spos << "Pos: ";
+          //spos << pos <<"\n";
+          //conditionalDebugMsg(spos.str());
+          //contactsPtr->operator[](i).geom.pos[0] = pos[0];
+          //contactsPtr->operator[](i).geom.pos[1] = pos[1];
+          //contactsPtr->operator[](i).geom.pos[2] = pos[2];
+          contactsPtr->operator[](i).geom.pos[0] = (trafo*cont.pos).transpose()[0];
+          contactsPtr->operator[](i).geom.pos[1] = (trafo*cont.pos).transpose()[1];
+          contactsPtr->operator[](i).geom.pos[2] = (trafo*cont.pos).transpose()[2];
+          //std::stringstream spos;
+          //spos << "Pos: ";
+          //spos << pos <<"\n";
+          //conditionalDebugMsg(spos.str());
           const auto & normal = (trafo.linear()*cont.normal).transpose();
           if (normal.z() < 0.0)
           {
@@ -297,7 +317,7 @@ namespace mars {
             vNormal[0] = contactsPtr->operator[](i).geom.normal[0];
             vNormal[1] = contactsPtr->operator[](i).geom.normal[1];
             vNormal[2] = contactsPtr->operator[](i).geom.normal[2];
-            const auto & cont = result.getContact(i);
+            //const auto & cont = result.getContact(i);
             std::cout << "[EnvireMls::dumpFCLResults]: contactsPtr[i].geom.pos" << contact_point.transpose() << std::endl;
             std::cout << "[EnvireMls::dumpFCLResults]: contactsPtr[i].geom.normal " << vNormal.transpose() << std::endl;
             std::cout << "[EnvireMls::dumpFCLResults]: contactsPtr[i].geom.depth " << contactsPtr->operator[](i).geom.depth << std::endl;
