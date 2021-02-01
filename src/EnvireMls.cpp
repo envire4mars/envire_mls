@@ -65,8 +65,8 @@ namespace mars {
         LOG_INFO("[EnvireMls::EnvireMls] Plugin instantiated");
         mlsFrameId = MLS_FRAME_NAME; 
         centerFrameId = SIM_CENTER_FRAME_NAME;
-        ground_cfm = 0.00000001;
-        ground_erp = 0.1;
+        ground_cfm = 1e-05;
+        ground_erp = 0.2;
         mlsLoaded = false; // Loaded in the graph and also as attribute of this class
       }
 
@@ -176,15 +176,17 @@ namespace mars {
         contactsPtr->reserve(numContacts);
         contactsPtr->push_back(dContact());
         contactsPtr->operator[](0).surface.mode = dContactSoftERP | dContactSoftCFM; 
-        //contactsPtr[0].surface.soft_cfm = contactParams.cfm;
-        contactsPtr->operator[](0).surface.soft_cfm = ground_cfm;
+        contactsPtr->operator[](0).surface.soft_cfm = contactParams.cfm;
+        contactsPtr->operator[](0).surface.soft_erp = contactParams.erp;
+        //contactsPtr->operator[](0).surface.soft_cfm = ground_cfm;
+        //contactsPtr->operator[](0).surface.soft_erp = ground_erp;
         //std::cout << "[EnvireMls::InitContactParameters] contactsPtr[0].surface.soft_cfm " << contactsPtr[0].surface.soft_cfm << std::endl;
         //std::cout << "[EnvireMls::InitContactParameters] ContactParams.cfm : " << contactParams.cfm <<std::endl;
         //std::cout << "[EnvireMls::InitContactParameters] ContactParams.erp : " << contactParams.erp <<std::endl;
         //std::cout << "[EnvireMls::InitContactParameters] ContactParams.friction1 : " << contactParams.friction1 <<std::endl;
         //std::cout << "[EnvireMls::InitContactParameters] ContactParams.friction1 : " << contactParams.friction_direction1 <<std::endl;
-        //contactsPtr[0].surface.soft_erp = contactParams.erp;
-        contactsPtr->operator[](0).surface.soft_erp = ground_erp;
+
+
         if(contactParams.approx_pyramid) 
         {
           contactsPtr->operator[](0).surface.mode |= dContactApprox1;
@@ -194,11 +196,25 @@ namespace mars {
         if(contactsPtr->operator[](0).surface.mu != contactsPtr->operator[](0).surface.mu2)
           contactsPtr->operator[](0).surface.mode |= dContactMu2;
 
-        // Move handleFrictionDirection to another method
+
+        if(contactParams.rolling_friction > EPSILON )
+        {
+          contactsPtr->operator[](0).surface.mode |= dContactRolling;
+          contactsPtr->operator[](0).surface.rho = contactParams.rolling_friction;// + geom_data2->c_params.rolling_friction;
+          contactsPtr->operator[](0).surface.rho2 = contactParams.rolling_friction; // Here I guess should the one for the mls
+
+          if(contactParams.spinning_friction > EPSILON){
+            contactsPtr->operator[](0).surface.rhoN = contactParams.spinning_friction;
+          }
+          else {
+            contactsPtr->operator[](0).surface.rhoN = 0.0;
+          }
+        }
+
         // check if we have to calculate friction direction1
-        if(contactParams.friction_direction1){
+        //if(contactParams.friction_direction1){
           //std::cout << "[EnvireMls::initiContactParams] About to set friction direction" << std::endl;
-          dVector3 v1;
+          dVector3 v1 = {1.0, 0.0, 0.0, 0.0}; // Here the normal should be used I think, no it will be later doted with the normal.
           contactsPtr->operator[](0).surface.mode |= dContactFDir1;
           /*
            * Don't know how to do this part yet
@@ -211,7 +227,7 @@ namespace mars {
           contactsPtr->operator[](0).fdir1[0] = v1[0];
           contactsPtr->operator[](0).fdir1[1] = v1[1];
           contactsPtr->operator[](0).fdir1[2] = v1[2];
-        }
+        //}
         // then check for fds
         if(contactParams.fds1){
           contactsPtr->operator[](0).surface.mode |= dContactSlip1;
@@ -251,27 +267,34 @@ namespace mars {
         envire::core::Transform tfSimMls = simGraph->getTransform(centerFrameId, mlsFrameId);
         fcl::Transform3f trafo = tfSimMls.transform.getTransform().cast<float>();
         #ifdef DEBUG_ENVIRE_MLS
-          std::stringstream ss;
-          ss << "[EnvireMls::dumpFCLResults]: Trafo \n" << trafo.matrix() << "\n";
-          for(size_t i=0; i< result.numContacts(); ++i)
+          if (result.numContacts() > 0)
           {
-            const auto & cont = result.getContact(i);
-            //auto pos = (trafo*cont.pos).transpose();
-            //std::vector<float> pos;
-            //pos.push_back((trafo*cont.pos).transpose()[0]);
-            //pos.push_back((trafo*cont.pos).transpose()[1]);
-            //pos.push_back((trafo*cont.pos).transpose()[2]);
-            ss << "[EnvireMls::dumpFCLResults]: Contact transpose " << (trafo * cont.pos).transpose() << "\n";
-            ss << "[EnvireMls::dumpFCLResults]: Contact normal transpose (*trafo.linear) " << (trafo.linear() * cont.normal).transpose() << "\n";
-            ss << "[EnvireMls::dumpFCLResults]: Contact normal transpose " << cont.normal.transpose() << "\n";
-            ss << "[EnvireMls::dumpFCLResults]: Contact penetration depth " << cont.penetration_depth << "\n";
-            //std::stringstream spos;
-            //spos << "Pos: ";
-            //spos << pos <<"\n";
-            //conditionalDebugMsg("Pos: " + std::to_string(pos[0]) + ", " + std::to_string(pos[1]) +", " + std::to_string(pos[2]) );
+            std::stringstream ss;
+            ss << "[EnvireMls::dumpFCLResults]: Trafo \n" << trafo.matrix() << "\n";
+            for(size_t i=0; i< result.numContacts(); ++i)
+            {
+              const auto & cont = result.getContact(i);
+              //auto pos = (trafo*cont.pos).transpose();
+              //std::vector<float> pos;
+              //pos.push_back((trafo*cont.pos).transpose()[0]);
+              //pos.push_back((trafo*cont.pos).transpose()[1]);
+              //pos.push_back((trafo*cont.pos).transpose()[2]);
+              ss.str(std::string());
+              ss.clear();
+              ss << "[EnvireMls::dumpFCLResults]: Contact transpose " << (trafo * cont.pos).transpose() << "\n";
+              ss << "[EnvireMls::dumpFCLResults]: Contact normal transpose (*trafo.linear) " << (trafo.linear() * cont.normal).transpose() << "\n";
+              ss << "[EnvireMls::dumpFCLResults]: Contact normal transpose " << cont.normal.transpose() << "\n";
+              ss << "[EnvireMls::dumpFCLResults]: Contact penetration depth " << cont.penetration_depth << "\n";
+              LOG_DEBUG(ss.str().c_str());
+              //std::stringstream spos;
+              //spos << "Pos: ";
+              //spos << pos <<"\n";
+              //conditionalDebugMsg("Pos: " + std::to_string(pos[0]) + ", " + std::to_string(pos[1]) +", " + std::to_string(pos[2]) );
+            }
           }
-          LOG_DEBUG(ss.str().c_str());
         #endif
+        int contactsCount = result.numContacts();
+        LOG_DEBUG("ContactsCount: %d", contactsCount);
         for(size_t i=0; i< result.numContacts(); ++i)
         {
           const auto & cont = result.getContact(i);
@@ -303,7 +326,8 @@ namespace mars {
           //contactsPtr[i].geom.normal[1] = normal[1];
           //contactsPtr[i].geom.normal[2] = normal[2];
           const auto &depth = cont.penetration_depth;
-          contactsPtr->operator[](i).geom.depth = 2.0*std::abs(depth);
+          //contactsPtr->operator[](i).geom.depth = 2.0*std::abs(depth); // I guess this is because otherwise it goes through too easily
+          contactsPtr->operator[](i).geom.depth = std::abs(depth); // I guess this is because otherwise it goes through too easily
         }
         #ifdef DEBUG_ENVIRE_MLS
           std::cout << "[EnvireMls::dumpFCLResults] Result: " << std::endl;
@@ -398,7 +422,8 @@ namespace mars {
           smurf::Collidable collidable = itCols->getData();
           urdf::Collision collision = collidable.getCollision();
           // Prepare fcl call
-          fcl::CollisionRequestf request(10, true, 10, true);
+          //fcl::CollisionRequestf request(10, true, 10, true); // Try reducing the number of contact to one per object and see if the error still occurs
+          fcl::CollisionRequestf request(4, true, 4, true); // Just one contact per collidable
           fcl::CollisionResultf result;
           bool collisionComputed = true;
           switch (collision.geometry->type){
