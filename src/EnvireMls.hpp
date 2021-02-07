@@ -90,7 +90,6 @@ namespace mars {
         std::shared_ptr<std::vector<dContact>> createContacts( 
           const fcl::CollisionResultf & result, 
           smurf::Collidable collidable);
-        //  const std::vector<std::shared_ptr<interfaces::NodeInterface>> & NodeIfsPtrs);
 
         void getAllColFrames(void);
 

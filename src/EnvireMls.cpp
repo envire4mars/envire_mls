@@ -144,7 +144,10 @@ namespace mars {
         envire::core::EnvireGraph::vertex_iterator  it, end;
         std::shared_ptr<envire::core::EnvireGraph> simGraph = envire_managers::EnvireStorageManager::instance()->getGraph();
 
-        std::tie(it, end) = simGraph->getVertices(); // This is triggering a segfault if you set simGraph as an attribute of this module instead of accessing it on each method from the other module
+        // simGraph->getVertices() is triggering a segfault if you set simGraph
+        // as an attribute of this module instead of accessing it on each method
+        // from the other module
+        std::tie(it, end) = simGraph->getVertices(); 
         for(; it != end; ++it)
         {
             // See if the vertex has collision objects
@@ -180,11 +183,13 @@ namespace mars {
         contactsPtr->operator[](0).surface.soft_erp = contactParams.erp;
         //contactsPtr->operator[](0).surface.soft_cfm = ground_cfm;
         //contactsPtr->operator[](0).surface.soft_erp = ground_erp;
-        //std::cout << "[EnvireMls::InitContactParameters] contactsPtr[0].surface.soft_cfm " << contactsPtr[0].surface.soft_cfm << std::endl;
-        //std::cout << "[EnvireMls::InitContactParameters] ContactParams.cfm : " << contactParams.cfm <<std::endl;
-        //std::cout << "[EnvireMls::InitContactParameters] ContactParams.erp : " << contactParams.erp <<std::endl;
-        //std::cout << "[EnvireMls::InitContactParameters] ContactParams.friction1 : " << contactParams.friction1 <<std::endl;
-        //std::cout << "[EnvireMls::InitContactParameters] ContactParams.friction1 : " << contactParams.friction_direction1 <<std::endl;
+        #ifdef DEBUG_ENVIRE_MLS
+          std::cout << "[EnvireMls::InitContactParameters] contactsPtr[0].surface.soft_cfm " << contactsPtr[0].surface.soft_cfm << std::endl;
+          std::cout << "[EnvireMls::InitContactParameters] ContactParams.cfm : " << contactParams.cfm <<std::endl;
+          std::cout << "[EnvireMls::InitContactParameters] ContactParams.erp : " << contactParams.erp <<std::endl;
+          std::cout << "[EnvireMls::InitContactParameters] ContactParams.friction1 : " << contactParams.friction1 <<std::endl;
+          std::cout << "[EnvireMls::InitContactParameters] ContactParams.friction1 : " << contactParams.friction_direction1 <<std::endl;
+        #endif
 
 
         if(contactParams.approx_pyramid) 
@@ -211,17 +216,19 @@ namespace mars {
           }
         }
 
-        // check if we have to calculate friction direction1
+        // TODO: check how friction direction1 has to be properly set. Currently
+        // the setting is hardcoded and it is needed for succesful interaction
+
         //if(contactParams.friction_direction1){
-          //std::cout << "[EnvireMls::initiContactParams] About to set friction direction" << std::endl;
-          dVector3 v1 = {1.0, 0.0, 0.0, 0.0}; // Here the normal should be used I think, no it will be later doted with the normal.
+          conditionalDebugMsg("[EnvireMls::initiContactParams] About to set friction direction");
+          // The vector v1 which should be set via config will be later doted
+          // with the normal of the detected contact.
+          dVector3 v1 = {1.0, 0.0, 0.0, 0.0}; 
           contactsPtr->operator[](0).surface.mode |= dContactFDir1;
           /*
-           * Don't know how to do this part yet
-           * TODO Improve based on what is Done in NearCallback 
-           *
-           * NOTE This if seems not to be entered anyway in the interactions with
-           * the MLS
+           * TODO Improve this. 
+           * Maybe what is done in NearCallback can help but mostly it's all
+           * already based on that.
            *
            */
           contactsPtr->operator[](0).fdir1[0] = v1[0];
@@ -299,20 +306,9 @@ namespace mars {
         {
           const auto & cont = result.getContact(i);
           auto pos = (trafo*cont.pos).transpose();
-          //std::stringstream spos;
-          //spos << "Pos: ";
-          //spos << pos <<"\n";
-          //conditionalDebugMsg(spos.str());
-          //contactsPtr->operator[](i).geom.pos[0] = pos[0];
-          //contactsPtr->operator[](i).geom.pos[1] = pos[1];
-          //contactsPtr->operator[](i).geom.pos[2] = pos[2];
           contactsPtr->operator[](i).geom.pos[0] = (trafo*cont.pos).transpose()[0];
           contactsPtr->operator[](i).geom.pos[1] = (trafo*cont.pos).transpose()[1];
           contactsPtr->operator[](i).geom.pos[2] = (trafo*cont.pos).transpose()[2];
-          //std::stringstream spos;
-          //spos << "Pos: ";
-          //spos << pos <<"\n";
-          //conditionalDebugMsg(spos.str());
           const auto & normal = (trafo.linear()*cont.normal).transpose();
           if (normal.z() < 0.0)
           {
@@ -322,12 +318,12 @@ namespace mars {
           {
             Eigen::Vector3d::Map(contactsPtr->operator[](i).geom.normal) = normal.cast<double>();
           }
-          //contactsPtr[i].geom.normal[0] = normal[0];
-          //contactsPtr[i].geom.normal[1] = normal[1];
-          //contactsPtr[i].geom.normal[2] = normal[2];
           const auto &depth = cont.penetration_depth;
-          //contactsPtr->operator[](i).geom.depth = 2.0*std::abs(depth); // I guess this is because otherwise it goes through too easily
-          contactsPtr->operator[](i).geom.depth = std::abs(depth); // I guess this is because otherwise it goes through too easily
+          // The next line shows how the penetration was set previously, but in
+          // newer version this causes huge reaction forces
+          //contactsPtr->operator[](i).geom.depth = 2.0*std::abs(depth);
+          // Without it before, the rover was going through the surface completely
+          contactsPtr->operator[](i).geom.depth = std::abs(depth); 
         }
         #ifdef DEBUG_ENVIRE_MLS
           std::cout << "[EnvireMls::dumpFCLResults] Result: " << std::endl;
@@ -379,8 +375,6 @@ namespace mars {
        *
        */
 
-      //void EnvireMls::computeMLSCollisions(void)
-      //std::vector<mars::sim::ContactsPhysics> EnvireMls::getContactPoints(void)
       bool EnvireMls::updateContacts(void)
       {
         bool updated = false;
@@ -400,19 +394,22 @@ namespace mars {
         // Here only the collisions between the MLS and collidable objects are
         // processed
         // The frames that contain collidables are obtained in stepTheWorldChecks (only once)
-        //
         int countCollisions = 0;
         for(unsigned int frameIndex = 0; frameIndex<colFrames.size(); ++frameIndex)
         {
           conditionalDebugMsg("[EnvireMls::getContactPoints]: Collision related to frame " + colFrames[frameIndex]);
           envire::core::Transform tfColCen = simGraph->getTransform(centerFrameId, colFrames[frameIndex]);
-          //LOG_DEBUG("[WorldPhysics::computeMLSCollisions]: Transformation between sim center and robot colission frame %s", colFrames[frameIndex]);
-          //LOG_DEBUG("[WorldPhysics::computeMLSCollisions]: %s", tfColCen.toString().c_str());
+          #ifdef DEBUG_ENVIRE_MLS
+            LOG_DEBUG("[EnvireMls::updateContacts]: Transformation between sim center and robot colission frame %s", colFrames[frameIndex]);
+            LOG_DEBUG("[EnvireMls::updateContacts]: %s", tfColCen.toString().c_str());
+          #endif
           // Transformation must be from the mls frame to the colision object frame
           envire::core::Transform tfMlsCol = simGraph->getTransform(mlsFrameId, colFrames[frameIndex]);
           fcl::Transform3f trafo = tfMlsCol.transform.getTransform().cast<float>(); 
-          //LOG_DEBUG("[WorldPhysics::computeMLSCollisions]: About to provide transformation between MLS and %s", colFrames[frameIndex]); 
-          //LOG_DEBUG("[WorldPhysics::computeMLSCollisions]: Transformation according to envire graph: %s", tfMlsCol.toString().c_str());
+          #ifdef DEBUG_ENVIRE_MLS
+            LOG_DEBUG("[EnvireMls::updateContacts]: About to provide transformation between MLS and %s", colFrames[frameIndex]); 
+            LOG_DEBUG("[EnvireMls::updateContacts]: Transformation according to envire graph: %s", tfMlsCol.toString().c_str());
+          #endif
           std::stringstream ss;
           ss << trafo.matrix();
           conditionalDebugMsg("[EnvireMls::getContactPoints]: Trafo \n " + ss.str());
@@ -422,14 +419,15 @@ namespace mars {
           smurf::Collidable collidable = itCols->getData();
           urdf::Collision collision = collidable.getCollision();
           // Prepare fcl call
-          //fcl::CollisionRequestf request(10, true, 10, true); // Try reducing the number of contact to one per object and see if the error still occurs
-          fcl::CollisionRequestf request(4, true, 4, true); // Just one contact per collidable
+          // TODO: Set a parameter for the number of contacts per collidable
+          //fcl::CollisionRequestf request(10, true, 10, true); 
+          fcl::CollisionRequestf request(4, true, 4, true); 
           fcl::CollisionResultf result;
           bool collisionComputed = true;
           switch (collision.geometry->type){
             case urdf::Geometry::SPHERE:
-              { //wheel_front_left_motor_col_wheel_front_left_03
-                //std::cout << "Collision with a sphere" << std::endl;
+              { 
+                conditionalDebugMsg("[EnvireMls::getContactPoints]: Collision with a sphere");
                 urdf::SphereSharedPtr sphereUrdf = urdf::dynamic_pointer_cast<urdf::Sphere>(collision.geometry);
                 fcl::Spheref sphere(sphereUrdf->radius);
                 conditionalDebugMsg("[EnvireMls::getContactPoints]: About to request fcl collision");
@@ -439,7 +437,7 @@ namespace mars {
               }
             case urdf::Geometry::BOX:
               {
-                //std::cout << "Collision with a box" << std::endl;
+                conditionalDebugMsg("[EnvireMls::getContactPoints]: Collision with a box");
                 urdf::BoxSharedPtr boxUrdf = urdf::dynamic_pointer_cast<urdf::Box>(collision.geometry);
                 fcl::Boxf box(boxUrdf->dim.x, boxUrdf->dim.y, boxUrdf->dim.z);
                 fcl::collide_mls(mls, trafo, &box, request, result);
@@ -455,24 +453,11 @@ namespace mars {
             if (result.isCollision())
             {
               conditionalDebugMsg("[EnvireMls::getContactPoints]: Collision Detected " + colFrames[frameIndex]);
-              //std::cout << "\n [WorldPhysics::computeMLSCollisions]: Collision detected related to frame " << colFrames[frameIndex] << std::endl;
-              // Here a method createContacts will put the joints that correspond
-              // Get the interface to the simNodes at the index
-              //std::vector<std::shared_ptr<interfaces::NodeInterface>> nodesIfsPtrs;
-              //envire::core::EnvireGraph::ItemIterator<envire::core::Item<std::shared_ptr<mars::sim::SimNode>>> begin, end;
-              //boost::tie(begin, end) = simGraph->getItems<envire::core::Item<std::shared_ptr<mars::sim::SimNode>>>(colFrames[frameIndex]);
-              //if (begin != end){
-              //  std::shared_ptr<mars::sim::SimNode> nodePtr = begin->getData();
-              //  nodesIfsPtrs.push_back(nodePtr->getInterface());
-              //}
-
               mars::sim::ContactsPhysics contacts_col;
-              contacts_col.contactsPtr = createContacts(result, collidable);//, nodesIfsPtrs);
+              contacts_col.contactsPtr = createContacts(result, collidable);
               contacts_col.collidable = std::make_shared<smurf::Collidable>(std::move(collidable));
               contacts_col.numContacts = result.numContacts();
-
               contacts.push_back(contacts_col);
-
               #ifdef DEBUG_ENVIRE_MLS
                 for(size_t i=0; i< result.numContacts(); ++i)
                 {

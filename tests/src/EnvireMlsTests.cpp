@@ -75,7 +75,6 @@ namespace mars {
       }
   
       void EnvireMlsTests::init() {
-        LOG_INFO( "[EnvireMlsTests::init] First line"); 
         if (! loadGeneralConf(generalConfPath))
         {
           LOG_ERROR("Problem loading the main conf %s", generalConfPath.c_str());
@@ -90,12 +89,12 @@ namespace mars {
             sceneLoaded = loadScene();
           }
         }
-#ifndef SIM_CENTER_FRAME_NAME
-        LOG_DEBUG( "[EnvireMlsTests::init] SIM_CENTER_FRAME_NAME is not defined "); 
-#endif
-#ifdef SIM_CENTER_FRAME_NAME
-        LOG_DEBUG( "[EnvireMlsTests::init] SIM_CENTER_FRAME_NAME is defined: %s", SIM_CENTER_FRAME_NAME.c_str()); 
-#endif
+        #ifndef SIM_CENTER_FRAME_NAME
+          LOG_DEBUG( "[EnvireMlsTests::init] SIM_CENTER_FRAME_NAME is not defined "); 
+        #endif
+        #ifdef SIM_CENTER_FRAME_NAME
+          LOG_DEBUG( "[EnvireMlsTests::init] SIM_CENTER_FRAME_NAME is defined: %s", SIM_CENTER_FRAME_NAME.c_str()); 
+        #endif
         /*
         std::shared_ptr<envire::core::EnvireGraph> simGraph = envire_managers::EnvireStorageManager::instance()->getGraph();
         if (simGraph->containsFrame(MLS_FRAME_NAME))
@@ -117,7 +116,6 @@ namespace mars {
 
 
       void EnvireMlsTests::update(sReal time_ms) {
-        LOG_INFO( "[EnvireMlsTests::update] First line"); 
         if (sceneLoaded)
         {
           if (goalReached())
@@ -162,7 +160,6 @@ namespace mars {
         robotPose.position << robPos[0], robPos[1], robPos[2];
         robotPose.orientation = Eigen::AngleAxisd(robOri, Eigen::Vector3d::UnitZ());
         envire::core::Transform robotTf(robotPose.position, robotPose.orientation);
-        //envire::core::Transform robotTf = robotPose.getTransform();
         LOG_DEBUG(
           "Robot target translation : %g, %g, %g", 
           robotTf.transform.translation.x(), 
@@ -170,9 +167,6 @@ namespace mars {
           robotTf.transform.translation.z());
         envire::core::FrameId robotRootFrame = ROBOT_ROOT_LINK_NAME;
         LOG_DEBUG("TODO: Implement position change in test");
-        //control->nodes->setTfToCenter(robotRootFrame, robotTf);
-        //control->nodes->setTfToCenter(robotRootFrame, robotPose.getTransform());
-        //LOG_DEBUG("Robot moved");
         loaded = true; // TODO check somehow
         return loaded;
       }
@@ -204,9 +198,13 @@ namespace mars {
           mars::sim::SimMotor* motor;
           for(auto it: MOTOR_NAMES) {
             motor = control->motors->getSimMotorByName(it);
-            LOG_DEBUG( "[EnvireMlsTests::moveForwards] Motor %s received", it.c_str()); 
+            #ifdef FULL_MLS_TEST_DEBUG
+              LOG_DEBUG( "[EnvireMlsTests::moveForwards] Motor %s received", it.c_str()); 
+            #endif
             motor->setVelocity(SPEED);
-            LOG_DEBUG( "[EnvireMlsTests::moveForwards] Motor %s set velocity sent", it.c_str()); 
+            #ifdef FULL_MLS_TEST_DEBUG
+              LOG_DEBUG( "[EnvireMlsTests::moveForwards] Motor %s set velocity sent", it.c_str()); 
+            #endif
           }
           robotMoving = true;
       }
@@ -331,7 +329,7 @@ namespace mars {
           reached = (distance <= 0.2);
           if (reached)
           {
-            LOG_DEBUG( "[EnvireMlsTests::goalReached] Target reached"); 
+            LOG_INFO( "[EnvireMlsTests::goalReached] Target reached"); 
           }
           LOG_DEBUG( "[EnvireMlsTests::goalReached] Distance: %f", distance); 
         }
