@@ -1,0 +1,8 @@
+# Modes: load_ply, dump_ply, load_mls_graph --> TODO: dump_ply functionality has to be moved
+mode: "load_mls_graph"
+# The ply files are read and a mls is generated from them and loaded in the simulation envire graph. Then the EG is dumped to a file.
+ply_path: "/models/environments/ply_cueva_del_viento/cave_maps/entry_cave.ply"
+# The .graph files are searched for mls which are loaded on the simulator graph
+envire_graph_path: "precalculated_mls_map-20171112.graph"
+# map_type: tsdf or sloped - Used for creating new maps
+map_type: "sloped"
