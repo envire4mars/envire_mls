@@ -93,7 +93,7 @@ namespace mars {
 
       void EnvireMls::update(sReal time_ms) 
       {
-        LOG_ERROR("[EnvireMls::Update] Implementation pending");
+        //LOG_ERROR("[EnvireMls::Update] Implementation pending");
 
       }
 
