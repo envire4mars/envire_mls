@@ -10,8 +10,11 @@
     <depend package="simulation/mars/interfaces" />
     <depend package="simulation/mars/sim" />
     <depend package="envire/envire_core" />
-    <depend package="envire/envire_collider_mls" />
+    <depend package="envire/envire_fcl" />
+    <!-- <depend package="envire/envire_collider_mls" /> Not maintained anymore -->
     <depend package="base/types" />
+    <depend package="simulation/envire_graph_loader" /> <!-- needed for the test -->
+    <depend package="simulation/ode-16" />
 
     <tags>needs_opt</tags>
 </package>

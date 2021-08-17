@@ -28,17 +28,19 @@
 
 #pragma once
 
+#include <ode/contact.h>
 #include <mars/interfaces/sim/MarsPluginTemplate.h>
 #include <mars/interfaces/sim/MotorManagerInterface.h>
 #include <mars/interfaces/MARSDefs.h>
 #include <mars/interfaces/NodeData.h>
 
+#include <mars/sim/ContactsPhysics.hpp>
 #include <string>
 
 #include <envire_core/graph/EnvireGraph.hpp>
 #include <envire_core/items/Item.hpp>
 
-#include <envire_collider_mls/MLSCollision.hpp>
+#include <envire_fcl/Collision.hpp>
 
 #include <maps/grid/MLSMap.hpp>
 
@@ -53,7 +55,10 @@ namespace mars {
       using mlsPrec = maps::grid::MLSMapPrecalculated;
       using mlsKal = maps::grid::MLSMapKalman;
       using mlsSloped = maps::grid::MLSMapSloped;
-      //using mlsType = maps::grid::MLSMap<maps::grid::MLSConfig::KALMAN>;
+      using mlsType = maps::grid::MLSMapPrecalculated;
+      using CollisionType = smurf::Collidable;
+      using CollisionItem = envire::core::Item<CollisionType>;
+      using IterCollItem = envire::core::EnvireGraph::ItemIterator<CollisionItem>;
 
       // inherit from MarsPluginTemplateGUI for extending the gui
       class EnvireMls: public mars::interfaces::MarsPluginTemplate {
@@ -73,33 +78,45 @@ namespace mars {
         void init();
         void reset();
         void update(mars::interfaces::sReal time_ms);
+        void getSomeData(void* data);
 
-        // EnvireMls methods
-        void loadMLSMap(const std::string & mlsPath);
-        void addMLSNode();
-        void testAddMLS();
-        void testAddMLSAndRobot();
+        void preStepChecks(void);
+        bool updateContacts(void);
+        void initContactParams(
+          std::shared_ptr<std::vector<dContact>> & contactsPtr,
+          const smurf::ContactParams contactParams, int numContacts);
+        void dumpFCLResult(const fcl::CollisionResultf &result, std::shared_ptr<std::vector<dContact>> & contactPtr);
+        
+        std::shared_ptr<std::vector<dContact>> createContacts( 
+          const fcl::CollisionResultf & result, 
+          smurf::Collidable collidable);
+
+        void getAllColFrames(void);
 
       private:
 
-        //void deserializeMLS(const std::string & mlsPath);
-        mars::interfaces::NodeData* setUpNodeData();
-        mlsPrec getMLSMap(const envire::core::EnvireGraph & graph, envire::core::FrameId mlsFrameId);
+        mlsPrec getMLSFromFrame(const std::shared_ptr<envire::core::EnvireGraph> & graph, envire::core::FrameId mlsFrameId);
         void moveForwards();
         void loadSlopedFromPLY();
 
-        // Private members
- 	maps::grid::MLSMapPrecalculated mlsPrecalculated;
- 	envire::collision::MLSCollision* mlsCollision;
-	boost::shared_ptr<maps::grid::MLSMapPrecalculated> mlsPtr;   	
+        void conditionalDebugMsg(const std::string trace);
 
-        bool sceneLoaded;
-        bool moved;
         envire::core::FrameId mlsFrameId;
         envire::core::FrameId centerFrameId;
-        bool movingForward;
 
-        //EnvireSmurfLoader::EnvireSmurfLoader* theLoader;
+        std::vector<envire::core::FrameId> colFrames;
+
+        bool mlsLoaded;
+        mlsType mls;
+
+        std::vector<mars::sim::ContactsPhysics> contacts; 
+
+        // Used in the computation of contacts/collisions
+        // We keep same naming as in mars core
+        bool create_contacts, log_contacts; 
+        int num_contacts;
+        mars::interfaces::sReal ground_cfm, ground_erp;
+
 
       }; // end of class definition EnvireMls
 
