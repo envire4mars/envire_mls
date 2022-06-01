@@ -3,7 +3,7 @@
 #include <cstdlib>
 #include <mars/plugins/envire_managers/EnvireDefs.hpp>
 
-const std::string testMlsDataPath = std::getenv(ENV_AUTOPROJ_ROOT) + std::string("/simulation/envire_mls/tests/testMlsData/");
+const std::string testMlsDataPath = std::getenv(ENV_AUTOPROJ_ROOT) + std::string("/simulation/envire_mls/test/testMlsData/");
 const std::string asguardPath = std::getenv(ENV_AUTOPROJ_ROOT) + std::string("/models/robots/asguard_v4/smurf/asguard_v4.smurf");
 const std::string robotName = "asguard";
 const std::string generalConfPath = testMlsDataPath + "general_conf.yml";
