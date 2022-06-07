@@ -5,10 +5,7 @@ project(
   DESCRIPTION "Provides MLS environment representation load and storage in the Envire Mars graph")
 
 find_package(Rock)
-set(ROCK_USE_CXX11 TRUE)
 set(ROCK_TEST_ENABLED ON CACHE BOOL "set to ON to enable the unit tests")
-
-include(FindPkgConfig)
 
 find_package(PCL 1.8 REQUIRED COMPONENTS common)
 set(PCL_LIBS pcl_common-${PCL_VERSION_MAJOR}.${PCL_VERSION_MINOR} pcl_io-${PCL_VERSION_MAJOR}.${PCL_VERSION_MINOR})

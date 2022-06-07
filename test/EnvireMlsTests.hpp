@@ -43,7 +43,7 @@
 #include <string>
 #include <yaml-cpp/yaml.h>
 
-#include <mars/plugins/envire_mls/EnvireMls.hpp>
+#include <envire_mls/EnvireMls.hpp>
 
 namespace mars {
 
