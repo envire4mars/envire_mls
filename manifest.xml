@@ -13,8 +13,10 @@
     <depend package="envire/envire_fcl" />
     <!-- <depend package="envire/envire_collider_mls" /> Not maintained anymore -->
     <depend package="base/types" />
-    <depend package="simulation/envire_graph_loader" /> <!-- needed for the test -->
     <depend package="simulation/ode-16" />
-
+    <depend package="slam/pcl" />
+    <depend package="simulation/envire_graph_loader" /> <!-- needed for the test -->
+    <depend package="simulation/envire_smurf_loader" />  <!-- needed for the test -->
+    <depend package="gui/osgviz_mars-plugins/mars_graphics" />  <!-- needed for the test -->
     <tags>needs_opt</tags>
 </package>
