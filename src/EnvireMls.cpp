@@ -272,7 +272,7 @@ namespace mars {
         //envire::core::Transform tfColMls = control->graph->getTransform(frameId, MLS_FRAME_NAME); 
         std::shared_ptr<envire::core::EnvireGraph> simGraph = envire_managers::EnvireStorageManager::instance()->getGraph();
         envire::core::Transform tfSimMls = simGraph->getTransform(centerFrameId, mlsFrameId);
-        fcl::Transform3f trafo = tfSimMls.transform.getTransform().cast<float>();
+        fcl::Transform3f trafo{tfSimMls.transform.getTransform().cast<float>().matrix()};
         #ifdef DEBUG_ENVIRE_MLS
           if (result.numContacts() > 0)
           {
@@ -405,7 +405,7 @@ namespace mars {
           #endif
           // Transformation must be from the mls frame to the colision object frame
           envire::core::Transform tfMlsCol = simGraph->getTransform(mlsFrameId, colFrames[frameIndex]);
-          fcl::Transform3f trafo = tfMlsCol.transform.getTransform().cast<float>(); 
+          fcl::Transform3f trafo{tfMlsCol.transform.getTransform().cast<float>().matrix()}; 
           #ifdef DEBUG_ENVIRE_MLS
             LOG_DEBUG("[EnvireMls::updateContacts]: About to provide transformation between MLS and %s", colFrames[frameIndex]); 
             LOG_DEBUG("[EnvireMls::updateContacts]: Transformation according to envire graph: %s", tfMlsCol.toString().c_str());
