@@ -40,13 +40,12 @@
 #include <mars/sim/NodePhysics.h>
 #include <mars/interfaces/sim/LoadCenter.h>
 #include <mars/interfaces/sim/NodeManagerInterface.h>
-#include <mars/plugins/envire_managers/EnvireDefs.hpp>
-#include <mars/plugins/envire_managers/EnvireStorageManager.hpp>
+#include <mars/interfaces/sim/StorageManagerInterface.h>
 #include <mars/sim/SimMotor.h>
 
 #include <pcl/io/ply_io.h>
 
-#include "defs.hpp"
+#define MLS_FRAME_NAME std::string("mls_01")
 
 namespace mars {
   namespace plugins {
@@ -64,7 +63,7 @@ namespace mars {
       {
         LOG_INFO("[EnvireMls::EnvireMls] Plugin instantiated");
         mlsFrameId = MLS_FRAME_NAME;
-        centerFrameId = SIM_CENTER_FRAME_NAME;
+        centerFrameId = control->storage->getRootFrame();
         ground_cfm = 1e-05;
         ground_erp = 0.2;
         mlsLoaded = false; // Loaded in the graph and also as attribute of this class
@@ -85,7 +84,7 @@ namespace mars {
         {
           graph->addFrame(MLS_FRAME_NAME);
           envire::core::Transform identity_tf(base::Time::now(), base::TransformWithCovariance::Identity());
-          graph->addTransform(SIM_CENTER_FRAME_NAME, MLS_FRAME_NAME, identity_tf);
+          graph->addTransform(centerFrameId, MLS_FRAME_NAME, identity_tf);
         }
       }
 

@@ -1,13 +1,12 @@
-set(SOURCES 
+set(SOURCES
     EnvireMls.cpp
 )
 
 set(HEADERS
     EnvireMls.hpp
-    defs.hpp
 )
 
-set(deps_pkg_config 
+set(deps_pkg_config
     lib_manager
     envire_core
     mars_sim
