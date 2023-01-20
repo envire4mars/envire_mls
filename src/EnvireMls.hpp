@@ -45,7 +45,7 @@
 #include <maps/grid/MLSMap.hpp>
 
 
-#include <mars/plugins/envire_smurf_loader/EnvireSmurfLoader.hpp>
+//#include <mars/plugins/envire_smurf_loader/EnvireSmurfLoader.hpp>
 
 namespace mars {
 
@@ -86,9 +86,9 @@ namespace mars {
           std::shared_ptr<std::vector<dContact>> & contactsPtr,
           const smurf::ContactParams contactParams, int numContacts);
         void dumpFCLResult(const fcl::CollisionResultf &result, std::shared_ptr<std::vector<dContact>> & contactPtr);
-        
-        std::shared_ptr<std::vector<dContact>> createContacts( 
-          const fcl::CollisionResultf & result, 
+
+        std::shared_ptr<std::vector<dContact>> createContacts(
+          const fcl::CollisionResultf & result,
           smurf::Collidable collidable);
 
         void getAllColFrames(void);
@@ -109,11 +109,11 @@ namespace mars {
         bool mlsLoaded;
         mlsType mls;
 
-        std::vector<mars::sim::ContactsPhysics> contacts; 
+        std::vector<mars::sim::ContactsPhysics> contacts;
 
         // Used in the computation of contacts/collisions
         // We keep same naming as in mars core
-        bool create_contacts, log_contacts; 
+        bool create_contacts, log_contacts;
         int num_contacts;
         mars::interfaces::sReal ground_cfm, ground_erp;
 
