@@ -8,7 +8,12 @@ find_package(Rock)
 set(ROCK_TEST_ENABLED ON CACHE BOOL "set to ON to enable the unit tests")
 
 find_package(PCL 1.8 REQUIRED COMPONENTS common)
-set(PCL_LIBS pcl_common-${PCL_VERSION_MAJOR}.${PCL_VERSION_MINOR} pcl_io-${PCL_VERSION_MAJOR}.${PCL_VERSION_MINOR})
+pkg_check_modules(PCL_COMMON_VERSIONED QUIET pcl_common-${PCL_VERSION_MAJOR}.${PCL_VERSION_MINOR})
+if(PCL_COMMON_VERSIONED_FOUND)
+    set(PCL_LIBS pcl_common-${PCL_VERSION_MAJOR}.${PCL_VERSION_MINOR} pcl_io-${PCL_VERSION_MAJOR}.${PCL_VERSION_MINOR})
+else()
+    set(PCL_LIBS pcl_common pcl_io)
+endif()
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(PKGCONFIG REQUIRED
